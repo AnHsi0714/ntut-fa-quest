@@ -68,7 +68,7 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       x: 2,
       y: 5,
       direction: "down",
-      greeting: "你好，我是承辦老師。申請文件 A 請先在這裡簽核，再去系辦，最後到教務處送件。",
+      greeting: "你好，我是承辦老師。行政文件申請都要先經過我這邊簽核。",
     },
     {
       id: "academicAffairs",
@@ -79,7 +79,7 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       x: 11,
       y: 6,
       direction: "down",
-      greeting: "歡迎來到教務處，這裡是文件 A 的最後一站。",
+      greeting: "歡迎來到教務處，大部分文件申請流程都會在這裡送出、完成。",
     },
     {
       id: "department",
@@ -90,7 +90,7 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       x: 5,
       y: 12,
       direction: "down",
-      greeting: "系辦已經收件，請再前往教務處完成最後送件。",
+      greeting: "系辦已經收件，請依你目前申請的文件確認接下來還要去哪裡。",
     },
     {
       id: "departmentHead",
@@ -101,7 +101,7 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       x: 17,
       y: 11,
       direction: "down",
-      greeting: "（框架版本）我是系主任，出現機率邏輯尚未串接。",
+      greeting: "我是系主任，有些文件需要我這邊簽核，跟系辦的先後順序都可以。",
     },
   ];
 

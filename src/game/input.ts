@@ -11,12 +11,17 @@ const DIRECTION_KEYS: Record<string, Direction> = {
   KeyD: "right",
 };
 
-const INTERACT_KEYS = new Set(["Enter", "Space"]);
+/** 按一下才觸發一次的按鍵（跟移動鍵不同，不會因為按住而連續觸發）。 */
+const ACTION_KEYS: Record<string, string> = {
+  Enter: "interact",
+  Space: "interact",
+  KeyQ: "cycleQuest",
+};
 
-/** 鍵盤輸入管理：方向鍵 / WASD 移動，Enter / Space 互動（邊緣觸發，避免按住連續觸發）。 */
+/** 鍵盤輸入管理：方向鍵 / WASD 移動，Enter / Space 互動、Q 切換任務（皆為邊緣觸發）。 */
 export class InputManager {
   private readonly heldKeys = new Set<string>();
-  private interactQueued = false;
+  private readonly queuedActions = new Set<string>();
 
   constructor() {
     window.addEventListener("keydown", this.handleKeyDown);
@@ -24,11 +29,12 @@ export class InputManager {
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
-    if (DIRECTION_KEYS[event.code] || INTERACT_KEYS.has(event.code)) {
+    if (DIRECTION_KEYS[event.code] || ACTION_KEYS[event.code]) {
       event.preventDefault();
     }
-    if (INTERACT_KEYS.has(event.code) && !this.heldKeys.has(event.code)) {
-      this.interactQueued = true;
+    const action = ACTION_KEYS[event.code];
+    if (action && !this.heldKeys.has(event.code)) {
+      this.queuedActions.add(action);
     }
     this.heldKeys.add(event.code);
   };
@@ -48,8 +54,17 @@ export class InputManager {
 
   /** 讀取「這一幀是否觸發互動」，讀取後會自動重置，等同邊緣觸發。 */
   consumeInteract(): boolean {
-    if (this.interactQueued) {
-      this.interactQueued = false;
+    return this.consumeAction("interact");
+  }
+
+  /** 讀取「這一幀是否按了切換任務鍵」，讀取後會自動重置。 */
+  consumeCycleQuest(): boolean {
+    return this.consumeAction("cycleQuest");
+  }
+
+  private consumeAction(action: string): boolean {
+    if (this.queuedActions.has(action)) {
+      this.queuedActions.delete(action);
       return true;
     }
     return false;

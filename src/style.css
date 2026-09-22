@@ -5,6 +5,8 @@
   --color-text: #f5f5f5;
   --color-text-dim: #cfcfe6;
   --color-accent: #ffd166;
+  --font-pixel: "Press Start 2P", "Courier New", monospace;
+  --pixel-corner: 8px;
 }
 
 * {
@@ -29,20 +31,50 @@ body {
   min-height: 100vh;
 }
 
+/* ---------- 像素風視窗框：用來讓側欄／對話框／HUD 看起來像同一套遊戲介面 ---------- */
+
+.pixel-frame {
+  position: relative;
+  background: var(--color-panel-bg);
+  border: 3px solid var(--color-panel-border);
+  box-shadow: inset 0 0 0 3px var(--color-bg);
+  clip-path: polygon(
+    0 var(--pixel-corner),
+    var(--pixel-corner) var(--pixel-corner),
+    var(--pixel-corner) 0,
+    calc(100% - var(--pixel-corner)) 0,
+    calc(100% - var(--pixel-corner)) var(--pixel-corner),
+    100% var(--pixel-corner),
+    100% calc(100% - var(--pixel-corner)),
+    calc(100% - var(--pixel-corner)) calc(100% - var(--pixel-corner)),
+    calc(100% - var(--pixel-corner)) 100%,
+    var(--pixel-corner) 100%,
+    var(--pixel-corner) calc(100% - var(--pixel-corner)),
+    0 calc(100% - var(--pixel-corner))
+  );
+}
+
+.pixel-font {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.02em;
+}
+
 #game-title {
-  font-size: 22px;
+  font-size: 18px;
   margin: 0;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
 }
 
 #game-viewport {
   position: relative;
   width: 100%;
-  max-width: 800px;
+  max-width: 480px;
   background: #1e2b1e;
   border: 4px solid var(--color-panel-border);
   border-radius: 4px;
   overflow: hidden;
+  order: 1;
 }
 
 #game-canvas {
@@ -86,11 +118,11 @@ body {
 }
 
 #hud-hint {
-  background: rgba(15, 15, 26, 0.75);
+  --pixel-corner: 4px;
+  background: rgba(15, 15, 26, 0.85);
   color: var(--color-text);
-  font-size: 14px;
-  padding: 4px 10px;
-  border-radius: 4px;
+  font-size: 13px;
+  padding: 5px 12px;
 }
 
 #dialogue-box {
@@ -98,9 +130,6 @@ body {
   left: 8px;
   right: 8px;
   bottom: 8px;
-  background: var(--color-panel-bg);
-  border: 3px solid var(--color-panel-border);
-  border-radius: 6px;
   padding: 10px 14px;
   min-height: 84px;
 }
@@ -131,28 +160,89 @@ body {
   text-align: right;
 }
 
-#side-panels {
+/* ---------- 整體版面：任務面板（左）／地圖（中）／流程驗證（右） ---------- */
+
+#game-layout {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   width: 100%;
-  max-width: 800px;
+  max-width: 1100px;
 }
 
 #quest-panel,
 #verification-panel {
-  flex: 1 1 280px;
-  background: var(--color-panel-bg);
-  border: 3px solid var(--color-panel-border);
-  border-radius: 6px;
-  padding: 12px 14px;
+  width: 100%;
+  max-width: 480px;
+  min-width: 0;
+  padding: 14px;
+  padding-top: 0;
+  /* 任務／驗證面板裡的文字（尤其是 NFA 編譯出來的複合 state 名稱）可能很長，
+     一律用換行吸收，絕對不能讓面板被撐寬進而擠壓地圖。 */
+  overflow-wrap: break-word;
 }
 
-#quest-panel h2,
-#verification-panel h2 {
-  margin: 0 0 8px 0;
-  font-size: 16px;
+/* 窄螢幕（手機）：地圖在最上面，任務面板、流程驗證依序疊在下面。 */
+#quest-panel {
+  order: 2;
+}
+
+#verification-panel {
+  order: 3;
+}
+
+/* 寬螢幕：任務面板在地圖左邊、流程驗證在地圖右邊，三欄並排。 */
+@media (min-width: 860px) {
+  #game-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  #quest-panel {
+    order: 1;
+    flex: 0 0 240px;
+  }
+
+  /* 地圖尺寸固定，不管左右兩側面板的內容多長都不會被擠壓縮小。 */
+  #game-viewport {
+    order: 2;
+    flex: 0 0 480px;
+  }
+
+  #verification-panel {
+    order: 3;
+    flex: 0 0 240px;
+  }
+}
+
+.panel-title {
+  margin: 0 -14px 12px -14px;
+  padding: 8px 14px 6px 14px;
+  font-size: 15px;
+  font-weight: 700;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-bottom: 3px solid var(--color-panel-border);
+}
+
+.panel-subtitle {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--color-accent);
+  line-height: 1.4;
+}
+
+#quest-switch-hint {
+  margin: -6px 0 10px 0;
+  font-size: 12px;
+  color: var(--color-text-dim);
+}
+
+#quest-switch-hint:empty {
+  display: none;
 }
 
 #quest-steps {
@@ -161,7 +251,7 @@ body {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   font-size: 14px;
 }
 
@@ -180,18 +270,24 @@ body {
 }
 
 #verification-state-line {
-  margin: 0 0 8px 0;
-  font-size: 14px;
+  margin: 0 0 10px 0;
+  font-size: 13px;
   color: var(--color-text);
+  line-height: 1.6;
+}
+
+#verification-state {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--color-accent);
 }
 
 .badge {
   display: inline-block;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-weight: 700;
-  font-size: 14px;
-  margin: 0 0 10px 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0 0 12px 0;
 }
 
 .badge-idle,
@@ -216,7 +312,7 @@ body {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   font-size: 13px;
   max-height: 160px;
   overflow-y: auto;

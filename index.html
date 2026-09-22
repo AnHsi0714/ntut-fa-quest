@@ -4,36 +4,48 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NTUT FA Quest</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div id="app">
-      <h1 id="game-title">NTUT FA Quest</h1>
-      <div id="game-viewport">
-        <canvas id="game-canvas"></canvas>
-        <div id="npc-labels"></div>
-        <div id="dialogue-box" class="hidden" role="status" aria-live="polite">
-          <p id="dialogue-speaker"></p>
-          <p id="dialogue-text"></p>
-          <p id="dialogue-hint">按 Enter / Space 繼續</p>
-        </div>
-        <div id="hud">
-          <span id="hud-hint">方向鍵 / WASD 移動，靠近 NPC 後按 Enter / Space 互動</span>
-        </div>
-      </div>
-      <div id="side-panels">
-        <section id="quest-panel" aria-labelledby="quest-panel-heading">
-          <h2 id="quest-panel-heading">
-            目前任務：<span id="quest-name">-</span>
-          </h2>
+      <h1 id="game-title" class="pixel-font">NTUT FA Quest</h1>
+      <div id="game-layout">
+        <section id="quest-panel" class="pixel-frame" aria-labelledby="quest-panel-heading">
+          <h2 id="quest-panel-heading" class="panel-title">目前任務</h2>
+          <p id="quest-name" class="panel-subtitle">-</p>
+          <p id="quest-switch-hint"></p>
           <ol id="quest-steps"></ol>
         </section>
-        <section id="verification-panel" aria-labelledby="verification-panel-heading">
-          <h2 id="verification-panel-heading">流程驗證</h2>
+        <div id="game-viewport">
+          <canvas id="game-canvas"></canvas>
+          <div id="npc-labels"></div>
+          <div id="dialogue-box" class="pixel-frame hidden" role="status" aria-live="polite">
+            <p id="dialogue-speaker"></p>
+            <p id="dialogue-text"></p>
+            <p id="dialogue-hint">按 Enter / Space 繼續</p>
+          </div>
+          <div id="hud">
+            <span id="hud-hint" class="pixel-frame"
+              >方向鍵 / WASD 移動，靠近 NPC 後按 Enter / Space 互動</span
+            >
+          </div>
+        </div>
+        <section
+          id="verification-panel"
+          class="pixel-frame"
+          aria-labelledby="verification-panel-heading"
+        >
+          <h2 id="verification-panel-heading" class="panel-title">流程驗證</h2>
           <p id="verification-state-line">
-            目前 State：<span id="verification-state">-</span>
+            目前 State：<span id="verification-state" class="pixel-font">-</span>
           </p>
-          <p id="verification-result" class="badge badge-idle">尚未開始</p>
+          <p id="verification-result" class="badge badge-idle pixel-font">尚未開始</p>
           <ul id="verification-trace"></ul>
         </section>
       </div>

@@ -149,6 +149,8 @@ Verification Engine 再判斷這個 Trace 是否屬於合法流程。
 - [x] 廣場
 - [ ] 其他必要地點（例如餐廳 / 教室，供第 9 節臨時任務使用）
 
+- [ ] 目前 MVP 版本的地圖（`campusMapData.ts`）刻意做得很小，只夠放下現有幾個地點。後續要把地圖尺寸拉大、做出真正有探索感的校園規模，不要一直維持這種小地圖。
+
 例如：
 
 ```
@@ -273,6 +275,7 @@ Verification Engine（只管：這個 Event 在目前 state 合不合法）
 ```
 
 也就是說：
+
 - **Game Layer** 負責「這次互動，最終產生的 Event 是什麼」（可能考慮時間、機率、體力等因素）。
 - **Verification Layer** 只負責「這個 Event 序列，在自動機上合不合法」，完全不需要知道時間或機率是怎麼算出來的。
 
@@ -672,7 +675,12 @@ src/
     ["start", "visit_advisor", "advisor"],
     ["advisor", "staff_absent", "waiting_advisor"],
     ["waiting_advisor", "return_later", "advisor"],
-    ["advisor", "visit_department", "department", { "requiredTime": "afternoon" }],
+    [
+      "advisor",
+      "visit_department",
+      "department",
+      { "requiredTime": "afternoon" }
+    ],
     ["department", "visit_academic", "academic"],
     ["academic", "complete", "complete"]
   ]

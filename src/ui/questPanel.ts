@@ -1,32 +1,56 @@
 import type { QuestDefinition } from "../quest/questManager";
+import type { Verifier } from "../verification/verifier";
 
-/** Quest 進度面板（計畫書第 16 節相關 UI）：把 Document A 的線性流程畫成步驟清單。 */
+/**
+ * Quest 進度面板（計畫書第 16 節相關 UI）。
+ * 用「這個事件有沒有出現在合法 Trace 裡」來判斷完成度，而不是用 state 在 states
+ * 陣列裡的 index —— 這樣不管 quest 背後是單純 DFA、還是從 NFA 編譯出來的 DFA
+ * （state 可能是好幾個 NFA state 合併出來的集合），面板邏輯都不用改。
+ */
 export class QuestPanel {
   private readonly nameEl: HTMLElement;
+  private readonly switchHintEl: HTMLElement;
   private readonly listEl: HTMLElement;
 
   constructor() {
     const nameEl = document.getElementById("quest-name");
+    const switchHintEl = document.getElementById("quest-switch-hint");
     const listEl = document.getElementById("quest-steps");
-    if (!nameEl || !listEl) {
+    if (!nameEl || !switchHintEl || !listEl) {
       throw new Error("找不到 Quest Panel 的 DOM 元素，請確認 index.html 結構");
     }
     this.nameEl = nameEl;
+    this.switchHintEl = switchHintEl;
     this.listEl = listEl;
   }
 
-  render(quest: QuestDefinition, currentState: string): void {
+  render(
+    quest: QuestDefinition,
+    verifier: Verifier,
+    questIndex: number,
+    questCount: number
+  ): void {
     this.nameEl.textContent = quest.name;
+    this.switchHintEl.textContent =
+      questCount > 1 ? `按 Q 切換任務（${questIndex + 1} / ${questCount}）` : "";
 
-    const currentIndex = quest.states.indexOf(currentState);
+    const completedEvents = new Set(
+      verifier
+        .getTrace()
+        .getSteps()
+        .filter((step) => step.isValid)
+        .map((step) => step.event)
+    );
+    const expectedEvents = new Set(verifier.getExpectedEvents());
+
     this.listEl.innerHTML = "";
-    quest.transitions.forEach(([, event], index) => {
+    for (const event of quest.displaySteps) {
       const li = document.createElement("li");
       const label = quest.eventLabels[event] ?? event;
-      if (index < currentIndex) {
+      if (completedEvents.has(event)) {
         li.textContent = `✓ ${label}`;
         li.className = "step-done";
-      } else if (index === currentIndex) {
+      } else if (expectedEvents.has(event)) {
         li.textContent = `▶ ${label}`;
         li.className = "step-current";
       } else {
@@ -34,6 +58,6 @@ export class QuestPanel {
         li.className = "step-pending";
       }
       this.listEl.appendChild(li);
-    });
+    }
   }
 }

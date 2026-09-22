@@ -2,21 +2,74 @@
   {
     "id": "document-a",
     "name": "文件 A：一般申請流程",
+    "type": "dfa",
     "source": "TODO：填入教務處 / 系辦官方公告網址與查詢日期（計畫書第 8 節資料來源與免責聲明）",
-    "states": ["start", "advisor", "department", "academic", "complete"],
+    "states": ["start", "advisor", "department", "complete"],
     "initialState": "start",
     "acceptingStates": ["complete"],
     "transitions": [
       ["start", "visit_advisor", "advisor"],
       ["advisor", "visit_department", "department"],
-      ["department", "visit_academic", "academic"],
-      ["academic", "complete", "complete"]
+      ["department", "submit_document", "complete"]
     ],
+    "npcEvents": {
+      "advisor": "visit_advisor",
+      "department": "visit_department",
+      "academicAffairs": "submit_document"
+    },
     "eventLabels": {
       "visit_advisor": "拜訪承辦老師",
       "visit_department": "前往系辦",
-      "visit_academic": "前往教務處",
-      "complete": "送出文件"
-    }
+      "submit_document": "前往教務處送出文件"
+    },
+    "displaySteps": ["visit_advisor", "visit_department", "submit_document"]
+  },
+  {
+    "id": "document-b",
+    "name": "文件 B：系辦與系主任皆須完成（順序不限）",
+    "type": "nfa",
+    "source": "TODO：填入教務處 / 系辦官方公告網址與查詢日期（計畫書第 8 節資料來源與免責聲明）",
+    "states": [
+      "start",
+      "advisor",
+      "hyp_dept_first",
+      "hyp_head_first",
+      "wait_head",
+      "wait_dept",
+      "ready",
+      "complete"
+    ],
+    "initialState": "start",
+    "acceptingStates": ["complete"],
+    "epsilonTransitions": [
+      ["advisor", "hyp_dept_first"],
+      ["advisor", "hyp_head_first"]
+    ],
+    "transitions": [
+      ["start", "visit_advisor", ["advisor"]],
+      ["hyp_dept_first", "visit_department", ["wait_head"]],
+      ["wait_head", "visit_departmentHead", ["ready"]],
+      ["hyp_head_first", "visit_departmentHead", ["wait_dept"]],
+      ["wait_dept", "visit_department", ["ready"]],
+      ["ready", "submit_document", ["complete"]]
+    ],
+    "npcEvents": {
+      "advisor": "visit_advisor",
+      "department": "visit_department",
+      "departmentHead": "visit_departmentHead",
+      "academicAffairs": "submit_document"
+    },
+    "eventLabels": {
+      "visit_advisor": "拜訪承辦老師",
+      "visit_department": "前往系辦",
+      "visit_departmentHead": "前往系主任室",
+      "submit_document": "前往教務處送出文件"
+    },
+    "displaySteps": [
+      "visit_advisor",
+      "visit_department",
+      "visit_departmentHead",
+      "submit_document"
+    ]
   }
 ]
