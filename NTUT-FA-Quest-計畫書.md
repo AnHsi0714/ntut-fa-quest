@@ -50,23 +50,23 @@
 - [x] 建立簡單的 NTUT 校園 2D 地圖
 - [x] 建立玩家移動系統
 - [x] 建立可互動 NPC
-- [ ] 建立行政文件申請任務
-- [ ] 建立任務進度顯示
+- [x] 建立行政文件申請任務
+- [x] 建立任務進度顯示
 - [ ] 建立校園探索與文件申請流程
 - [ ] 建立時間系統（見第 9 節）
 - [ ] 建立體力與臨時任務系統（見第 9 節）
 
 ### 3.2 軟體驗證目標
 
-- [ ] 將行政流程抽象成有限狀態模型
-- [ ] 使用 DFA 表示固定的行政流程
+- [x] 將行政流程抽象成有限狀態模型
+- [x] 使用 DFA 表示固定的行政流程
 - [ ] 使用 NFA 表示具有多條合法路徑的流程
-- [ ] 記錄玩家實際操作序列
-- [ ] 建立 Verification Engine
-- [ ] 驗證玩家 Trace 是否符合流程
-- [ ] 顯示 ACCEPT / REJECT
-- [ ] 顯示錯誤流程與 Invalid Transition
-- [ ] 建立 Counterexample
+- [x] 記錄玩家實際操作序列
+- [x] 建立 Verification Engine
+- [x] 驗證玩家 Trace 是否符合流程
+- [x] 顯示 ACCEPT / REJECT
+- [x] 顯示錯誤流程與 Invalid Transition
+- [x] 建立 Counterexample
 
 > 目前自動機理論部分以課堂已學過的 **DFA / NFA** 為核心範疇。若後續課程進度延伸到 Minimization、正規表達式等內容，會視情況評估是否加入延伸應用；本計畫書先以「邊實作、邊視學習進度擴充」為原則，不預先塞入尚未學過的理論。
 
@@ -391,12 +391,12 @@ $$
 
 開發項目：
 
-- [ ] 建立 State
-- [ ] 建立 Alphabet
-- [ ] 建立 Transition Function
-- [ ] 建立 Initial State
-- [ ] 建立 Accepting State
-- [ ] 實作 DFA Simulation
+- [x] 建立 State
+- [x] 建立 Alphabet
+- [x] 建立 Transition Function
+- [x] 建立 Initial State
+- [x] 建立 Accepting State
+- [x] 實作 DFA Simulation
 - [ ] 加入 Waiting State 支援（見第 9.3 節）
 
 ---
@@ -483,14 +483,14 @@ DepartmentOffice
 
 開發項目：
 
-- [ ] 建立 Automaton Interface
-- [ ] 建立 Event System
-- [ ] 建立 Trace Recorder
-- [ ] 實作 Transition Check
-- [ ] 實作 ACCEPT
-- [ ] 實作 REJECT
-- [ ] 實作 Invalid Transition
-- [ ] 實作 Counterexample
+- [x] 建立 Automaton Interface
+- [x] 建立 Event System
+- [x] 建立 Trace Recorder
+- [x] 實作 Transition Check
+- [x] 實作 ACCEPT
+- [x] 實作 REJECT
+- [x] 實作 Invalid Transition
+- [x] 實作 Counterexample
 - [ ] 確保臨時任務 / 時間跳轉等純遊戲事件不會被誤記錄進 Trace
 
 ---
@@ -540,12 +540,12 @@ VisitDepartmentOffice
 
 開發項目：
 
-- [ ] 顯示完整 Trace
-- [ ] 顯示目前 State
+- [x] 顯示完整 Trace
+- [x] 顯示目前 State
 - [ ] 顯示目前 Event
-- [ ] 顯示下一個合法操作
+- [x] 顯示下一個合法操作
 - [ ] 顯示錯誤位置
-- [ ] 顯示錯誤原因
+- [x] 顯示錯誤原因
 
 ---
 
@@ -700,8 +700,8 @@ src/
 
 ### Phase 2：Automata
 
-- [ ] 建立 DFA 資料結構
-- [ ] 建立 DFA Simulation
+- [x] 建立 DFA 資料結構
+- [x] 建立 DFA Simulation
 - [ ] 建立 NFA 資料結構
 - [ ] 建立 NFA Simulation
 - [ ] 實作 NFA → DFA
@@ -711,15 +711,15 @@ src/
 
 ### Phase 3：Verification Engine
 
-- [ ] 建立 Event System
-- [ ] 建立 Trace Recorder
-- [ ] 建立 Verification Engine
-- [ ] 實作 Transition Verification
-- [ ] 實作 ACCEPT
-- [ ] 實作 REJECT
-- [ ] 實作 Invalid Transition
-- [ ] 實作 Counterexample
-- [ ] 實作「下一個合法操作」提示
+- [x] 建立 Event System
+- [x] 建立 Trace Recorder
+- [x] 建立 Verification Engine
+- [x] 實作 Transition Verification
+- [x] 實作 ACCEPT
+- [x] 實作 REJECT
+- [x] 實作 Invalid Transition
+- [x] 實作 Counterexample
+- [x] 實作「下一個合法操作」提示
 
 ### Phase 4：Web RPG
 
@@ -731,8 +731,8 @@ src/
 - [x] 建立 NPC
 - [x] 建立 NPC 互動
 - [x] 建立對話框
-- [ ] 建立 Quest System
-- [ ] 建立任務 UI
+- [x] 建立 Quest System
+- [x] 建立任務 UI
 - [ ] 建立時間系統與跳轉時間功能
 - [ ] 建立體力系統
 - [ ] 建立臨時任務（吃飯 / 上課 / 其他）
@@ -740,14 +740,14 @@ src/
 
 ### Phase 5：遊戲與驗證整合
 
-- [ ] 玩家互動產生 Event
-- [ ] Event 傳入 Verification Engine
-- [ ] 更新 Automaton State
-- [ ] 更新 Quest Progress
-- [ ] 顯示 Trace
-- [ ] 顯示 ACCEPT / REJECT
-- [ ] 顯示錯誤原因
-- [ ] 顯示 Counterexample
+- [x] 玩家互動產生 Event
+- [x] Event 傳入 Verification Engine
+- [x] 更新 Automaton State
+- [x] 更新 Quest Progress
+- [x] 顯示 Trace
+- [x] 顯示 ACCEPT / REJECT
+- [x] 顯示錯誤原因
+- [x] 顯示 Counterexample
 - [ ] 遊戲內顯示 Automaton
 - [ ] 確認時間 / 體力 / 臨時任務事件不會誤入 Trace
 

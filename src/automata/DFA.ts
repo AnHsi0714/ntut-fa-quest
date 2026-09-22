@@ -1,9 +1,9 @@
 import type { State, EventSymbol, Transition } from "./transition";
 
 /**
- * DFA 資料結構骨架（計畫書第 11 節）。
- * State / Alphabet / Transition Function / Initial / Accepting 已就緒，
- * Simulation（含 Waiting State，見 9.3 節）留待 Phase 2 實作。
+ * DFA 資料結構與 Simulation（計畫書第 11 節）。
+ * Waiting State（9.3 節）之後接上時間系統時，只需要在 transitions 裡加上對應的
+ * StaffAbsent / ReturnLater transition，不需要改這個類別本身。
  */
 export class DFA {
   constructor(
@@ -20,6 +20,13 @@ export class DFA {
       (transition) => transition.from === currentState && transition.event === event
     );
     return match ? match.to : null;
+  }
+
+  /** 目前 state 底下所有合法的下一步事件，REJECT 時用來顯示「應該要做什麼」。 */
+  getExpectedEvents(currentState: State): EventSymbol[] {
+    return this.transitions
+      .filter((transition) => transition.from === currentState)
+      .map((transition) => transition.event);
   }
 
   isAccepting(state: State): boolean {

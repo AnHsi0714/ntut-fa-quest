@@ -68,7 +68,7 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       x: 2,
       y: 5,
       direction: "down",
-      greeting: "（框架版本）你好，我是承辦老師。任務系統尚未串接。",
+      greeting: "你好，我是承辦老師。申請文件 A 請先在這裡簽核，再去系辦，最後到教務處送件。",
     },
     {
       id: "academicAffairs",
@@ -79,7 +79,7 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       x: 11,
       y: 6,
       direction: "down",
-      greeting: "（框架版本）歡迎來到教務處，任務系統尚未串接。",
+      greeting: "歡迎來到教務處，這裡是文件 A 的最後一站。",
     },
     {
       id: "department",
@@ -90,7 +90,7 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       x: 5,
       y: 12,
       direction: "down",
-      greeting: "（框架版本）這裡是系辦，任務系統尚未串接。",
+      greeting: "系辦已經收件，請再前往教務處完成最後送件。",
     },
     {
       id: "departmentHead",

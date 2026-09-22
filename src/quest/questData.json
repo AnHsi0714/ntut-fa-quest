@@ -1,14 +1,22 @@
 [
   {
     "id": "document-a",
-    "name": "文件 A（範例流程，待對照計畫書第 8 節填入實際校園行政流程）",
+    "name": "文件 A：一般申請流程",
     "source": "TODO：填入教務處 / 系辦官方公告網址與查詢日期（計畫書第 8 節資料來源與免責聲明）",
     "states": ["start", "advisor", "department", "academic", "complete"],
+    "initialState": "start",
+    "acceptingStates": ["complete"],
     "transitions": [
       ["start", "visit_advisor", "advisor"],
       ["advisor", "visit_department", "department"],
       ["department", "visit_academic", "academic"],
       ["academic", "complete", "complete"]
-    ]
+    ],
+    "eventLabels": {
+      "visit_advisor": "拜訪承辦老師",
+      "visit_department": "前往系辦",
+      "visit_academic": "前往教務處",
+      "complete": "送出文件"
+    }
   }
 ]
