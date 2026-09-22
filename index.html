@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NTUT FA Quest</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <h1 id="game-title">NTUT FA Quest</h1>
+      <div id="game-viewport">
+        <canvas id="game-canvas"></canvas>
+        <div id="npc-labels"></div>
+        <div id="dialogue-box" class="hidden" role="status" aria-live="polite">
+          <p id="dialogue-speaker"></p>
+          <p id="dialogue-text"></p>
+          <p id="dialogue-hint">按 Enter / Space 繼續</p>
+        </div>
+        <div id="hud">
+          <span id="hud-hint">方向鍵 / WASD 移動，靠近 NPC 後按 Enter / Space 互動</span>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
