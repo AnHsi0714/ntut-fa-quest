@@ -1,6 +1,7 @@
 import { GameMap, createGrid, fillRect, setTile } from "./map";
 import { TileType } from "./tileTypes";
 import type { Direction } from "./pixelSprite";
+import type { TimePeriod } from "./timeSystem";
 
 export const MAP_WIDTH = 22;
 export const MAP_HEIGHT = 17;
@@ -10,8 +11,12 @@ export interface NpcSpawn {
   name: string;
   /** 對應 NPC_PALETTES 的角色外觀 key，見計畫書第 7 節 NPC 設計。 */
   paletteKey: string;
-  /** 對應計畫書 9.1 節：固定時段型 / 遊走型，目前框架版本先固定站在原地，時間 / 機率邏輯留待後續 Phase 實作。 */
+  /** 對應計畫書 9.1 節：固定時段型 / 遊走型。 */
   kind: "fixed" | "wandering";
+  /** kind === "fixed" 時，只有落在這些時段才會出現；不填代表整天都在（例如系辦、教務處）。 */
+  availablePeriods?: TimePeriod[];
+  /** kind === "wandering" 時，每次時段切換重新擲一次的出現機率（0～1）。 */
+  appearChance?: number;
   locationLabel: string;
   x: number;
   y: number;
@@ -64,6 +69,8 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       name: "承辦老師",
       paletteKey: "advisor",
       kind: "fixed",
+      // 老師只有下午在研究室，早上／中午／晚上去都會撲空（計畫書 9.3 / 9.4 節示範案例）。
+      availablePeriods: ["afternoon"],
       locationLabel: "教師研究室",
       x: 2,
       y: 5,
@@ -97,6 +104,8 @@ export function buildCampusMap(): { map: GameMap; npcSpawns: NpcSpawn[] } {
       name: "系主任",
       paletteKey: "departmentHead",
       kind: "wandering",
+      // 系主任開會、跑班機率頗高，每次時段切換有 50% 機率在辦公室（計畫書 9.1 節遊走型範例）。
+      appearChance: 0.5,
       locationLabel: "系主任室",
       x: 17,
       y: 11,

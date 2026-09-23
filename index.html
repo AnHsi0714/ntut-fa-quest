@@ -15,6 +15,11 @@
   <body>
     <div id="app">
       <h1 id="game-title" class="pixel-font">NTUT FA Quest</h1>
+      <div id="status-bar" class="pixel-frame" role="status" aria-live="polite">
+        <span id="status-time">時段：-</span>
+        <span id="status-stamina">體力：-</span>
+        <span id="status-hint">按 T 跳轉時間</span>
+      </div>
       <div id="game-layout">
         <section id="quest-panel" class="pixel-frame" aria-labelledby="quest-panel-heading">
           <h2 id="quest-panel-heading" class="panel-title">目前任務</h2>
@@ -32,7 +37,7 @@
           </div>
           <div id="hud">
             <span id="hud-hint" class="pixel-frame"
-              >方向鍵 / WASD 移動，靠近 NPC 後按 Enter / Space 互動</span
+              >方向鍵 / WASD 移動，靠近 NPC 後按 Enter / Space 互動，Q 切換任務，T 跳轉時間</span
             >
           </div>
         </div>

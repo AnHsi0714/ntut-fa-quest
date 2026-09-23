@@ -66,6 +66,30 @@ body {
   color: var(--color-accent);
 }
 
+/* ---------- 狀態列：目前時段 / 體力（計畫書 9.4 / 9.5 節） ---------- */
+
+#status-bar {
+  --pixel-corner: 4px;
+  width: 100%;
+  max-width: 480px;
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+#status-time {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+#status-hint {
+  color: var(--color-text-dim);
+}
+
 #game-viewport {
   position: relative;
   width: 100%;

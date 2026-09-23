@@ -53,8 +53,8 @@
 - [x] 建立行政文件申請任務
 - [x] 建立任務進度顯示
 - [ ] 建立校園探索與文件申請流程
-- [ ] 建立時間系統（見第 9 節）
-- [ ] 建立體力與臨時任務系統（見第 9 節）
+- [x] 建立時間系統（見第 9 節）
+- [x] 建立體力與臨時任務系統（見第 9 節）
 
 ### 3.2 軟體驗證目標
 
@@ -281,52 +281,48 @@ Verification Engine（只管：這個 Event 在目前 state 合不合法）
 
 這樣兩層分工清楚，不會讓 DFA / NFA 的狀態數因為時間 / 機率而爆炸。
 
-### 9.3 Loop 的形式化（老師不在 → 稍後再來）
+### 9.3 老師不在 → 稍後再來（不建 Waiting State，沿用 REJECT）
 
-原本第 9 節只用文字描述「老師不在 → 稍後再來 → 再去一次」，這裡明確定義成自動機上的 **Waiting State**，而不是單純的 self-loop，理由是：`StaffAbsent` 本身已經是 Alphabet 中定義好的事件（見第 10 節），用獨立的 Waiting State 可以讓這個事件在 Trace 上留下清楚的紀錄，方便之後在 UI 上顯示「這裡曾經撲空過」，也方便 Counterexample 呈現完整的錯誤/等待歷程。
+原本考慮把「老師不在 → 稍後再來 → 再去一次」定義成自動機上獨立的 **Waiting State**（`Advisor -[StaffAbsent]-> Waiting_Advisor -[ReturnLater]-> Advisor`）。實際接上遊戲、看到 UI 上同時出現 `waiting_advisor` 這種內部 state 名稱、以及「下一步可以是：拜訪承辦老師 或 老師不在，撲空了」這種把敘述句當成可選動作的提示文字後，發現這個設計把單純的「撲空」複雜化了：
+
+- Verifier 對「未定義 transition」本來就會回報 Invalid Transition、把該步記錄進 Trace（`isValid: false`）並產生 Counterexample。「撲空要留下紀錄」這個需求，靠 `StaffAbsent` 對應到一個**沒有定義的 transition**、直接 REJECT 就已經滿足，不需要額外的 state。
+- 有了 Waiting State 之後，「下一步可以是」的提示還得額外處理「`staff_absent` / `return_later` 其實跟 `visit_advisor` 是同一個玩家動作」的去重邏輯，這正是被複雜化的訊號。
+
+因此改成：`StaffAbsent` 維持是 Alphabet 裡的事件（見第 10 節），但**不**幫它定義任何 transition；玩家在錯的時段去找老師時，Game Layer 送出 `StaffAbsent`，因為沒有對應 transition 所以 REJECT，state 留在原地（例如仍是 `start`），這筆記錄依然留在 Trace 上，但畫面上換成撲空專屬的提示文案，不會顯示制式的「REJECT（Invalid Transition）」字樣，避免玩家誤以為自己把流程走錯了。老師在場時，直接送出原本就存在的 `VisitAdvisor`，不需要「回到原本 state」的過渡事件。
 
 ```
-(Advisor)
-   │ VisitAdvisor + StaffAbsent
-   ▼
-(Waiting_Advisor)
-   │ ReturnLater
-   ▼
-(Advisor)   ← 回到原本的 state，形成一個合法的 Loop
+(start)
+   │ VisitAdvisor + StaffAbsent（沒有對應 transition）→ REJECT，state 留在 start，Trace 留下這筆記錄
    │
    │ VisitAdvisor（老師這次在場）
    ▼
-(Advisor_Done)
+(advisor)
 ```
 
-- **合法 Loop**：`Advisor → Waiting_Advisor → Advisor` 這種因為 `StaffAbsent` 而產生的等待迴圈，在 transition function 中明確定義，屬於合法路徑的一部分。
-- **非法 Loop**：例如玩家在不該重複的地方（如系辦）重複造訪超過流程需要的次數，這種情況**不需要額外設計**——因為 DFA / NFA 天生只認得有定義的 transition，沒有定義對應路徑時就會直接落入 REJECT，不需要特別為「非法重複」建模。
+- **非法 Loop 的原則同樣適用在撲空上**：`StaffAbsent` 沒有定義 transition，跟玩家在系辦重複造訪超過流程需要的次數是同一種情況。DFA / NFA 天生只認得有定義的 transition，沒有定義對應路徑時就直接落入 REJECT，不需要特別為「撲空」或「非法重複」建立額外的 state。
 
 開發項目：
 
-- [ ] NPC 在場 / 不在場狀態
-- [ ] Return Later
-- [ ] Waiting State 的定義與資料結構
-- [ ] 重複造訪（合法 Loop）
+- [x] NPC 在場 / 不在場狀態
+- [x] 撲空（StaffAbsent）沿用「未定義 transition → REJECT」的預設行為，不建立額外 Waiting State
 - [ ] 流程分支
-- [ ] 合法 Loop 的 transition 設計
-- [ ] 非法 Loop（交由「未定義 transition → REJECT」的預設行為處理，不需額外建模）
+- [x] 非法 Loop（交由「未定義 transition → REJECT」的預設行為處理，不需額外建模）
 
 ### 9.4 時間系統
 
-- [ ] 建立遊戲內時間軸（例如以節次或時段為單位：早上 / 中午 / 下午 / 晚上）
-- [ ] 建立「跳轉時間」功能，玩家可主動快轉到下一個時段
-- [ ] 建立固定時段型 NPC 的出現規則（time-gated availability）
-- [ ] 建立遊走 / 隨機型 NPC 的出現機率規則
+- [x] 建立遊戲內時間軸（例如以節次或時段為單位：早上 / 中午 / 下午 / 晚上）
+- [x] 建立「跳轉時間」功能，玩家可主動快轉到下一個時段
+- [x] 建立固定時段型 NPC 的出現規則（time-gated availability）
+- [x] 建立遊走 / 隨機型 NPC 的出現機率規則
 - [ ] 將時間條件綁定到對應的 transition（例如：同一個 `VisitAdvisor` 事件，依時段不同對應到 Success 或 StaffAbsent）
-- [ ] UI 顯示目前時間 / 時段
+- [x] UI 顯示目前時間 / 時段
 
 ### 9.5 體力與臨時任務系統
 
-- [ ] 建立體力數值與消耗規則（移動、等待、碰運氣皆消耗體力）
-- [ ] 建立體力歸零後觸發的臨時任務（例如：吃飯、上課、其他日常事件）
-- [ ] 臨時任務為**純遊戲層機制**：會消耗遊戲內時間、暫時中斷玩家操作，但**不記錄進 Trace，也不進入 Verification Engine**
-- [ ] 建立體力恢復規則（例如完成吃飯任務後恢復體力）
+- [x] 建立體力數值與消耗規則（移動、等待、碰運氣皆消耗體力）
+- [x] 建立體力歸零後觸發的臨時任務（例如：吃飯、上課、其他日常事件）
+- [x] 臨時任務為**純遊戲層機制**：會消耗遊戲內時間、暫時中斷玩家操作，但**不記錄進 Trace，也不進入 Verification Engine**
+- [x] 建立體力恢復規則（例如完成吃飯任務後恢復體力）
 - [ ] 測試「玩家無法無限蹲點碰運氣」的遊戲節奏是否合理
 
 ---
@@ -343,7 +339,6 @@ VisitDepartmentOffice
 VisitDepartmentHead
 VisitAcademicAffairs
 StaffAbsent
-ReturnLater
 SubmitDocument
 CompleteQuest
 ```
@@ -358,7 +353,6 @@ VisitDepartmentOffice,
 VisitDepartmentHead,
 VisitAcademicAffairs,
 StaffAbsent,
-ReturnLater,
 SubmitDocument,
 CompleteQuest
 \}
@@ -400,7 +394,7 @@ $$
 - [x] 建立 Initial State
 - [x] 建立 Accepting State
 - [x] 實作 DFA Simulation
-- [ ] 加入 Waiting State 支援（見第 9.3 節）
+- [x] 確認撲空（StaffAbsent）沿用未定義 transition → REJECT 的預設行為，不需要額外的 Waiting State（見第 9.3 節）
 
 ---
 
@@ -663,31 +657,19 @@ src/
   "id": "document-a",
   "name": "文件 A",
   "source": "教務處官網 - 文件A申請說明（查詢日期：2026-XX-XX）",
-  "states": [
-    "start",
-    "advisor",
-    "waiting_advisor",
-    "department",
-    "academic",
-    "complete"
-  ],
+  "states": ["start", "advisor", "department", "complete"],
   "transitions": [
     ["start", "visit_advisor", "advisor"],
-    ["advisor", "staff_absent", "waiting_advisor"],
-    ["waiting_advisor", "return_later", "advisor"],
-    [
-      "advisor",
-      "visit_department",
-      "department",
-      { "requiredTime": "afternoon" }
-    ],
-    ["department", "visit_academic", "academic"],
-    ["academic", "complete", "complete"]
-  ]
+    ["advisor", "visit_department", "department"],
+    ["department", "submit_document", "complete"]
+  ],
+  "npcEvents": {
+    "advisor": { "present": "visit_advisor", "absent": "staff_absent" }
+  }
 }
 ```
 
-這樣可以在不修改 Verification Engine 的情況下增加新的文件流程，也可以直接在資料層加上時間條件與資料來源註記。
+`npcEvents.advisor` 這種 `{ present, absent }` 的寫法對應第 9.3 節的設計：`absent`（`staff_absent`）刻意不出現在 `transitions` 裡，撲空時就會落入「未定義 transition → REJECT」，不需要額外的 Waiting State。這樣可以在不修改 Verification Engine 的情況下增加新的文件流程，也可以直接在資料層加上資料來源註記。
 
 ---
 
@@ -713,7 +695,7 @@ src/
 - [x] 建立 NFA 資料結構
 - [x] 建立 NFA Simulation
 - [x] 實作 NFA → DFA
-- [ ] 建立行政流程 Automata（含 Waiting State）
+- [x] 建立行政流程 Automata（含撲空 StaffAbsent → REJECT 的處理，見第 9.3 節）
 - [x] 建立合法 Trace 測試
 - [x] 建立非法 Trace 測試
 
@@ -741,10 +723,10 @@ src/
 - [x] 建立對話框
 - [x] 建立 Quest System
 - [x] 建立任務 UI
-- [ ] 建立時間系統與跳轉時間功能
-- [ ] 建立體力系統
-- [ ] 建立臨時任務（吃飯 / 上課 / 其他）
-- [ ] 建立遊走 / 隨機型 NPC 的出現邏輯
+- [x] 建立時間系統與跳轉時間功能
+- [x] 建立體力系統
+- [x] 建立臨時任務（吃飯 / 上課 / 其他）
+- [x] 建立遊走 / 隨機型 NPC 的出現邏輯
 
 ### Phase 5：遊戲與驗證整合
 
@@ -757,7 +739,7 @@ src/
 - [x] 顯示錯誤原因
 - [x] 顯示 Counterexample
 - [ ] 遊戲內顯示 Automaton
-- [ ] 確認時間 / 體力 / 臨時任務事件不會誤入 Trace
+- [x] 確認時間 / 體力 / 臨時任務事件不會誤入 Trace
 
 ### Phase 6：視覺化
 
@@ -775,11 +757,11 @@ src/
 
 - [x] 固定順序流程
 - [x] 多路徑流程
-- [ ] 包含重複造訪的流程（合法 Loop）
-- [ ] 包含 NPC 缺席的流程（Waiting State）
-- [ ] 固定時段型 NPC 的時間判定
-- [ ] 遊走型 NPC 的機率判定
-- [ ] 體力耗盡觸發臨時任務
+- [x] 包含重複造訪的流程（合法 Loop）
+- [x] 包含 NPC 缺席的流程（撲空 → REJECT）
+- [x] 固定時段型 NPC 的時間判定
+- [x] 遊走型 NPC 的機率判定
+- [x] 體力耗盡觸發臨時任務
 
 **錯誤流程**
 
@@ -917,7 +899,7 @@ Generated DFA
 
 ### Demo 5：時間與體力系統
 
-玩家在錯誤時段拜訪固定時段型 NPC，得到 `StaffAbsent`，進入 Waiting State；玩家選擇「跳轉時間」到正確時段後再次拜訪，成功推進流程。接著展示體力耗盡觸發臨時任務（吃飯），任務結束後體力恢復、時間也隨之推進。
+玩家在錯誤時段拜訪固定時段型 NPC，得到 `StaffAbsent` 而 REJECT（不影響後續，state 留在原地）；玩家選擇「跳轉時間」到正確時段後再次拜訪，成功推進流程。接著展示體力耗盡觸發臨時任務（吃飯），任務結束後體力恢復、時間也隨之推進。
 
 ---
 

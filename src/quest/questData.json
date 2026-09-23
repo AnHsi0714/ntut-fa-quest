@@ -13,12 +13,13 @@
       ["department", "submit_document", "complete"]
     ],
     "npcEvents": {
-      "advisor": "visit_advisor",
+      "advisor": { "present": "visit_advisor", "absent": "staff_absent" },
       "department": "visit_department",
       "academicAffairs": "submit_document"
     },
     "eventLabels": {
       "visit_advisor": "拜訪承辦老師",
+      "staff_absent": "老師不在，撲空了",
       "visit_department": "前往系辦",
       "submit_document": "前往教務處送出文件"
     },

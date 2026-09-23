@@ -73,6 +73,33 @@ describe("Verifier + 文件 A（DFA，固定順序流程）", () => {
   });
 });
 
+describe("Verifier + 文件 A 的撲空（計畫書 9.3 節：不建 Waiting State，沿用未定義 transition → REJECT）", () => {
+  const documentA = getQuest("document-a");
+
+  it("撲空（staff_absent）沒有對應 transition => REJECT，但 state 留在原地，玩家隨時可以再試", () => {
+    const verifier = new Verifier(buildAutomatonForQuest(documentA));
+    const outcome = verifier.handleEvent("staff_absent");
+
+    expect(outcome.isValid).toBe(false);
+    expect(verifier.getCurrentState()).toBe("start");
+    expect(outcome.counterexample?.expectedEvents).toEqual(["visit_advisor"]);
+
+    // 撲空這筆依然會如實留在 Trace 上（isValid: false），方便 UI 顯示「這裡曾經撲空過」，
+    // 不需要額外的 state 來達成同樣的效果。
+    const events = verifier.getTrace().getSteps().map((step) => step.event);
+    expect(events).toEqual(["staff_absent"]);
+  });
+
+  it("撲空之後，老師實際在場時直接送 visit_advisor 就能繼續，不需要額外的「回來了」事件", () => {
+    const verifier = new Verifier(buildAutomatonForQuest(documentA));
+    verifier.handleEvent("staff_absent"); // REJECT，state 仍是 start
+    verifier.handleEvent("visit_advisor");
+    verifier.handleEvent("visit_department");
+    verifier.handleEvent("submit_document");
+    expect(verifier.isAccepted()).toBe(true);
+  });
+});
+
 describe("Verifier + 文件 B（NFA → DFA，系辦與系主任順序不限）", () => {
   const documentB = getQuest("document-b");
 

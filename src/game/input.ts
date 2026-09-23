@@ -16,9 +16,10 @@ const ACTION_KEYS: Record<string, string> = {
   Enter: "interact",
   Space: "interact",
   KeyQ: "cycleQuest",
+  KeyT: "advanceTime",
 };
 
-/** 鍵盤輸入管理：方向鍵 / WASD 移動，Enter / Space 互動、Q 切換任務（皆為邊緣觸發）。 */
+/** 鍵盤輸入管理：方向鍵 / WASD 移動，Enter / Space 互動、Q 切換任務、T 跳轉時間（皆為邊緣觸發）。 */
 export class InputManager {
   private readonly heldKeys = new Set<string>();
   private readonly queuedActions = new Set<string>();
@@ -60,6 +61,11 @@ export class InputManager {
   /** 讀取「這一幀是否按了切換任務鍵」，讀取後會自動重置。 */
   consumeCycleQuest(): boolean {
     return this.consumeAction("cycleQuest");
+  }
+
+  /** 讀取「這一幀是否按了跳轉時間鍵」，讀取後會自動重置。 */
+  consumeAdvanceTime(): boolean {
+    return this.consumeAction("advanceTime");
   }
 
   private consumeAction(action: string): boolean {
