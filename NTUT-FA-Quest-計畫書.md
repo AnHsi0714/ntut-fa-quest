@@ -420,11 +420,11 @@ $$
 
 開發項目：
 
-- [ ] 建立 NFA 結構
-- [ ] 建立多條 Transition
-- [ ] 實作 NFA Simulation
-- [ ] 處理多個可能狀態
-- [ ] 測試多條合法 Trace
+- [x] 建立 NFA 結構
+- [x] 建立多條 Transition
+- [x] 實作 NFA Simulation
+- [x] 處理多個可能狀態
+- [x] 測試多條合法 Trace
 
 ---
 
@@ -442,12 +442,12 @@ DFA
 
 開發項目：
 
-- [ ] 實作 ε-closure（若模型需要）
-- [ ] 實作 State Set
-- [ ] 實作 Subset Construction
-- [ ] 產生 DFA
-- [ ] 比較 NFA 與 DFA 狀態數
-- [ ] 驗證 NFA 與 DFA 對相同 Trace 的結果一致
+- [x] 實作 ε-closure（若模型需要）
+- [x] 實作 State Set
+- [x] 實作 Subset Construction
+- [x] 產生 DFA
+- [x] 比較 NFA 與 DFA 狀態數
+- [x] 驗證 NFA 與 DFA 對相同 Trace 的結果一致
 
 ---
 
@@ -710,12 +710,12 @@ src/
 
 - [x] 建立 DFA 資料結構
 - [x] 建立 DFA Simulation
-- [ ] 建立 NFA 資料結構
-- [ ] 建立 NFA Simulation
-- [ ] 實作 NFA → DFA
+- [x] 建立 NFA 資料結構
+- [x] 建立 NFA Simulation
+- [x] 實作 NFA → DFA
 - [ ] 建立行政流程 Automata（含 Waiting State）
-- [ ] 建立合法 Trace 測試
-- [ ] 建立非法 Trace 測試
+- [x] 建立合法 Trace 測試
+- [x] 建立非法 Trace 測試
 
 ### Phase 3：Verification Engine
 
@@ -773,8 +773,8 @@ src/
 
 **正常流程**
 
-- [ ] 固定順序流程
-- [ ] 多路徑流程
+- [x] 固定順序流程
+- [x] 多路徑流程
 - [ ] 包含重複造訪的流程（合法 Loop）
 - [ ] 包含 NPC 缺席的流程（Waiting State）
 - [ ] 固定時段型 NPC 的時間判定
@@ -783,18 +783,18 @@ src/
 
 **錯誤流程**
 
-- [ ] 跳過必要步驟
-- [ ] 錯誤順序
+- [x] 跳過必要步驟
+- [x] 錯誤順序
 - [ ] 不合法地點
-- [ ] 不合法重複操作（非法 Loop → 未定義 transition → REJECT）
-- [ ] 提前提交文件
+- [x] 不合法重複操作（非法 Loop → 未定義 transition → REJECT）
+- [x] 提前提交文件
 
 **Automata**
 
-- [ ] DFA 測試
-- [ ] NFA 測試
-- [ ] NFA → DFA 測試
-- [ ] NFA / DFA 結果一致性測試
+- [x] DFA 測試
+- [x] NFA 測試
+- [x] NFA → DFA 測試
+- [x] NFA / DFA 結果一致性測試
 
 ### Phase 8：展示與報告
 
