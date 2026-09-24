@@ -11,6 +11,7 @@ import { StaminaSystem } from "./staminaSystem";
 import {
   QuestManager,
   buildAutomatonForQuest,
+  buildNfaForQuest,
   type QuestDefinition,
   type PresenceGatedNpcEvent,
 } from "../quest/questManager";
@@ -19,6 +20,7 @@ import { Verifier } from "../verification/verifier";
 import { QuestPanel } from "../ui/questPanel";
 import { VerificationPanel } from "../ui/verificationPanel";
 import { StatusBar } from "../ui/statusBar";
+import { AutomatonViewer, type AutomatonViewerInput } from "../ui/automatonViewer";
 
 const VIEWPORT_TILES_X = 20;
 const VIEWPORT_TILES_Y = 15;
@@ -51,6 +53,7 @@ export class Game {
   private readonly questPanel = new QuestPanel();
   private readonly verificationPanel = new VerificationPanel();
   private readonly statusBar = new StatusBar();
+  private readonly automatonViewer = new AutomatonViewer();
   private readonly map;
   private readonly player: Player;
   private readonly npcs: Npc[];
@@ -85,6 +88,8 @@ export class Game {
     }));
     if (this.quests.length === 0) throw new Error("questData.json 裡沒有任何 quest 定義");
 
+    this.automatonViewer.onOpenRequested(() => this.openAutomatonViewer());
+
     this.renderPanels();
     this.renderStatusBar();
   }
@@ -108,7 +113,11 @@ export class Game {
     this.player.update(deltaMs);
     for (const npc of this.npcs) npc.update(deltaMs);
 
-    if (this.dialogue.isOpen) {
+    if (this.automatonViewer.isOpen) {
+      if (this.input.consumeToggleAutomaton() || this.input.consumeCloseAutomaton()) {
+        this.automatonViewer.close();
+      }
+    } else if (this.dialogue.isOpen) {
       if (this.input.consumeInteract()) {
         this.dialogue.hide();
         if (this.restTaskPending) {
@@ -121,6 +130,7 @@ export class Game {
       this.handleInteractInput();
       this.handleCycleQuestInput();
       this.handleAdvanceTimeInput();
+      this.handleToggleAutomatonInput();
     }
 
     this.camera.follow(
@@ -166,6 +176,21 @@ export class Game {
     this.refreshNpcPresence();
     this.renderStatusBar();
     if (this.staminaSystem.isDepleted) this.triggerRestTask();
+  }
+
+  /** 顯示 / 關閉 Automaton 視窗（計畫書第 16 節），不消耗體力也不影響 Trace，純粹是檢視用途。 */
+  private handleToggleAutomatonInput(): void {
+    if (!this.input.consumeToggleAutomaton()) return;
+    this.openAutomatonViewer();
+  }
+
+  private openAutomatonViewer(): void {
+    this.automatonViewer.open(this.buildAutomatonViewerInput());
+  }
+
+  private buildAutomatonViewerInput(): AutomatonViewerInput {
+    const { quest, verifier } = this.activeQuestRuntime();
+    return { quest, verifier, dfa: verifier.getAutomaton(), nfa: buildNfaForQuest(quest) };
   }
 
   private refreshNpcPresence(): void {
@@ -259,6 +284,7 @@ export class Game {
     const { quest, verifier } = this.activeQuestRuntime();
     this.questPanel.render(quest, verifier, this.activeQuestIndex, this.quests.length);
     this.verificationPanel.render(verifier, quest);
+    this.automatonViewer.update(this.buildAutomatonViewerInput());
   }
 
   private renderStatusBar(): void {

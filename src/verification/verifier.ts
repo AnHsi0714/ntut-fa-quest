@@ -28,6 +28,11 @@ export class Verifier {
     return this.currentState;
   }
 
+  /** 目前這個 quest 實際跑在哪個 DFA 上，給 Automaton Viewer（計畫書第 16 節）畫圖用。 */
+  getAutomaton(): DFA {
+    return this.automaton;
+  }
+
   isAccepted(): boolean {
     return this.automaton.isAccepting(this.currentState);
   }

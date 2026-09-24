@@ -1,14 +1,25 @@
 import type { Verifier } from "../verification/verifier";
 import type { QuestDefinition } from "../quest/questManager";
 
-type ResultKind = "accept" | "reject" | "pending" | "idle";
+export type ResultKind = "accept" | "reject" | "pending" | "idle";
 
-const RESULT_TEXT: Record<ResultKind, string> = {
+export const RESULT_TEXT: Record<ResultKind, string> = {
   accept: "✓ ACCEPT",
   reject: "✗ REJECT（Invalid Transition）",
   pending: "進行中",
   idle: "尚未開始",
 };
+
+/** ACCEPT / REJECT / 進行中 / 尚未開始 的判斷邏輯，Verification Panel 跟 Automaton Viewer 共用。 */
+export function resolveResultKind(verifier: Verifier): ResultKind {
+  const steps = verifier.getTrace().getSteps();
+  const lastStep = steps[steps.length - 1];
+
+  if (verifier.isAccepted()) return "accept";
+  if (lastStep && !lastStep.isValid) return "reject";
+  if (steps.length > 0) return "pending";
+  return "idle";
+}
 
 /** Trace / ACCEPT / REJECT 顯示面板（計畫書第 15 節）。 */
 export class VerificationPanel {
@@ -30,20 +41,9 @@ export class VerificationPanel {
 
   render(verifier: Verifier, quest: QuestDefinition): void {
     this.stateEl.textContent = verifier.getCurrentState();
+    this.setResult(resolveResultKind(verifier));
 
     const steps = verifier.getTrace().getSteps();
-    const lastStep = steps[steps.length - 1];
-
-    if (verifier.isAccepted()) {
-      this.setResult("accept");
-    } else if (lastStep && !lastStep.isValid) {
-      this.setResult("reject");
-    } else if (steps.length > 0) {
-      this.setResult("pending");
-    } else {
-      this.setResult("idle");
-    }
-
     this.traceEl.innerHTML = "";
     for (const step of steps) {
       const li = document.createElement("li");

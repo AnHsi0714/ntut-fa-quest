@@ -17,9 +17,14 @@ const ACTION_KEYS: Record<string, string> = {
   Space: "interact",
   KeyQ: "cycleQuest",
   KeyT: "advanceTime",
+  KeyV: "toggleAutomaton",
+  Escape: "closeAutomaton",
 };
 
-/** 鍵盤輸入管理：方向鍵 / WASD 移動，Enter / Space 互動、Q 切換任務、T 跳轉時間（皆為邊緣觸發）。 */
+/**
+ * 鍵盤輸入管理：方向鍵 / WASD 移動，Enter / Space 互動、Q 切換任務、T 跳轉時間、
+ * V 顯示 / 關閉 Automaton 視窗（計畫書第 16 節）、Esc 關閉 Automaton 視窗（皆為邊緣觸發）。
+ */
 export class InputManager {
   private readonly heldKeys = new Set<string>();
   private readonly queuedActions = new Set<string>();
@@ -66,6 +71,16 @@ export class InputManager {
   /** 讀取「這一幀是否按了跳轉時間鍵」，讀取後會自動重置。 */
   consumeAdvanceTime(): boolean {
     return this.consumeAction("advanceTime");
+  }
+
+  /** 讀取「這一幀是否按了顯示 / 關閉 Automaton 鍵（V）」，讀取後會自動重置。 */
+  consumeToggleAutomaton(): boolean {
+    return this.consumeAction("toggleAutomaton");
+  }
+
+  /** 讀取「這一幀是否按了 Esc」，讀取後會自動重置。 */
+  consumeCloseAutomaton(): boolean {
+    return this.consumeAction("closeAutomaton");
   }
 
   private consumeAction(action: string): boolean {

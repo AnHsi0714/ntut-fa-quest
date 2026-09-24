@@ -65,14 +65,14 @@ function buildDfaFromDefinition(quest: QuestDfaDefinition): DFA {
   return new DFA(quest.states, alphabet, transitions, quest.initialState, quest.acceptingStates);
 }
 
-function buildDfaFromNfaDefinition(quest: QuestNfaDefinition): DFA {
+function buildNfaFromDefinition(quest: QuestNfaDefinition): NFA {
   const transitions = quest.transitions.map(([from, event, to]) => ({ from, event, to }));
   const alphabet = [...new Set(transitions.map((t) => t.event))];
   const epsilonTransitions = (quest.epsilonTransitions ?? []).map(([from, to]) => ({
     from,
     to,
   }));
-  const nfa = new NFA(
+  return new NFA(
     quest.states,
     alphabet,
     transitions,
@@ -80,7 +80,6 @@ function buildDfaFromNfaDefinition(quest: QuestNfaDefinition): DFA {
     quest.initialState,
     quest.acceptingStates
   );
-  return nfaToDfa(nfa);
 }
 
 /**
@@ -89,7 +88,15 @@ function buildDfaFromNfaDefinition(quest: QuestNfaDefinition): DFA {
  * 再用第 13 節的 subset construction 轉成 DFA，Verifier 永遠只需要面對 DFA。
  */
 export function buildAutomatonForQuest(quest: QuestDefinition): DFA {
-  return quest.type === "nfa" ? buildDfaFromNfaDefinition(quest) : buildDfaFromDefinition(quest);
+  return quest.type === "nfa" ? nfaToDfa(buildNfaFromDefinition(quest)) : buildDfaFromDefinition(quest);
+}
+
+/**
+ * 給 Automaton Viewer（計畫書第 16 節）「NFA 顯示模式」用：回傳轉換前的原始 NFA 結構。
+ * DFA 類型的 quest 沒有對應的 NFA，回傳 undefined。
+ */
+export function buildNfaForQuest(quest: QuestDefinition): NFA | undefined {
+  return quest.type === "nfa" ? buildNfaFromDefinition(quest) : undefined;
 }
 
 /** Quest 管理：載入 questData.json，供 Game Layer 查詢目前有哪些文件流程可以進行。 */
