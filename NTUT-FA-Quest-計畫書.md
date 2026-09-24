@@ -61,6 +61,8 @@
 - [x] 將行政流程抽象成有限狀態模型
 - [x] 使用 DFA 表示固定的行政流程
 - [ ] 使用 NFA 表示具有多條合法路徑的流程
+- [ ] 使用 PDA 表示需要用堆疊記錄配對數量的流程(加退選案例，見第 13A 節)
+- [ ] 使用 DFA Minimization 合併行為相同的狀態(任一位老師簽名皆可案例，見第 13B 節)
 - [x] 記錄玩家實際操作序列
 - [x] 建立 Verification Engine
 - [x] 驗證玩家 Trace 是否符合流程
@@ -69,6 +71,8 @@
 - [x] 建立 Counterexample
 
 > 目前自動機理論部分以課堂已學過的 **DFA / NFA** 為核心範疇。若後續課程進度延伸到 Minimization、正規表達式等內容，會視情況評估是否加入延伸應用；本計畫書先以「邊實作、邊視學習進度擴充」為原則，不預先塞入尚未學過的理論。
+>
+> **後續規劃(已確認方向)：** 課程進度進入 Context-Free Languages / PDA 單元後，預計加入「加退選」案例作為 PDA 的延伸應用(詳見第 13A 節)，用來示範需要用堆疊記錄配對數量的流程，這種情境是 DFA / NFA 無法處理的。
 
 ---
 
@@ -246,6 +250,64 @@ NPC 可以提供：
 ```
 REJECT
 ```
+
+### 文件 C(加退選，PDA 案例)
+
+情境：學生的學分已達上限，想加選新的課，必須先退掉課才能加選。退選與加選的順序不限，但累積退選次數必須隨時大於等於累積加選次數，最後兩者要完全打平，才能送出選課申請。
+
+玩家可以：
+
+- [ ] 退選一門課（DropCourse）
+- [ ] 加選一門課（AddCourse），僅在目前還有可用名額時合法
+- [ ] 送出選課申請（SubmitCourseRequest），僅在退選與加選數量完全打平時合法
+
+範例（合法，先退後加）：
+
+```
+DropCourse → DropCourse → AddCourse → AddCourse → SubmitCourseRequest
+```
+
+範例（合法，順序交錯）：
+
+```
+DropCourse → AddCourse → DropCourse → AddCourse → SubmitCourseRequest
+```
+
+範例（非法，加選超過目前可用名額）：
+
+```
+DropCourse → AddCourse → AddCourse → SubmitCourseRequest
+```
+
+第二次 AddCourse 發生當下沒有可配對的名額，直接判定為 Invalid Transition。
+
+這個流程無法只用 DFA / NFA 表示，因為合法與否取決於「目前累積退了幾門還沒配對」，這個數量沒有上限，需要用堆疊來記錄。詳見第 13A 節。
+
+### 文件 D(任一位老師簽名皆可，Minimization 案例)
+
+情境：某張申請表，可以找 (A) 導師、(B) 系學會指導老師，或 (C) 系上任一位老師簽名，三選一即可，簽好之後不論是哪一位簽的，後續流程都一樣：送到系辦，然後完成。
+
+玩家可以：
+
+- [ ] 找任一位授權老師簽名(三選一)
+- [ ] 送到系辦
+- [ ] 完成申請
+
+範例(三種簽名人皆合法，後續流程完全相同)：
+
+```
+SignByAdvisor → SubmitToOffice → CompleteQuest
+```
+
+```
+SignByClubAdvisor → SubmitToOffice → CompleteQuest
+```
+
+```
+SignByTeacher → SubmitToOffice → CompleteQuest
+```
+
+這份文件的流程本身很單純，設計重點不在能不能通過驗證，而是示範一件事：先用 NFA 畫出三條平行分支(甲/乙/丙任一位簽名)，轉成 DFA 後會產生三個分別對應「甲簽好了」「乙簽好了」「丙簽好了」的狀態；但因為這三個狀態之後能走的路完全一樣(都只剩送到系辦這一條路)，可以透過 Minimization 合併成一個狀態。詳見第 13B 節。
 
 ---
 
@@ -445,6 +507,78 @@ DFA
 
 ---
 
+## 13A. PDA（下推自動機）：加退選案例（規劃中）
+
+當流程需要記住「目前欠了多少還沒配對」時，DFA / NFA 的固定狀態數無法處理，必須引入堆疊（Stack），也就是 PDA（Pushdown Automaton）。這是本計畫書第 3.2 節提到、確認要做的下一階段延伸應用，對應課程 Context-Free Languages 單元。
+
+### 13A.1 情境
+
+對應第 8 節的文件 C：學生加退選時，退選次數必須隨時大於等於加選次數，兩者最後要完全打平才能送出申請。這跟課堂教的括號配對語言結構相同（退選是左括號、加選是右括號），是典型的上下文無關語言，無法用正規語言（DFA / NFA）表示。
+
+### 13A.2 Alphabet 與 Stack 用途
+
+```
+DropCourse           → Stack Push 一個名額標記
+AddCourse             → Stack Pop 一個名額標記（Stack 為空時判定為 Invalid Transition）
+SubmitCourseRequest   → 僅在 Stack 為空時合法，代表退選與加選已完全打平
+```
+
+### 13A.3 與現有架構的關係
+
+沿用第 4 節的分層設計：Game Layer 仍只負責把玩家操作轉成 Event，Verification Engine 這一層多了「查看 Stack 目前內容」的能力，但 ACCEPT / REJECT、Invalid Transition、Counterexample 對外的行為維持不變，不需要重新設計 Verification Engine 的介面。
+
+### 13A.4 開發項目（規劃中，尚未實作）
+
+- [ ] 建立 PDA 資料結構（States、Stack Alphabet、Transition、Stack 操作）
+- [ ] 實作 PDA Simulation
+- [ ] 將 Stack 狀態接上 Verification Engine 的 Invalid Transition 判定
+- [ ] 在 Automaton Viewer 加上 Stack 內容即時顯示
+- [ ] 建立合法 Trace 測試（含順序交錯的情況）
+- [ ] 建立非法 Trace 測試（加選超過可用名額）
+- [ ] 蒐集加退選實際規則（學分上限、退選期限等）並記錄資料來源與查詢日期
+
+---
+
+## 13B. DFA Minimization：任一位老師簽名皆可（規劃中）
+
+當 NFA 的多條分支「擇一即可、之後行為完全相同」時，NFA → DFA 轉換出來的 DFA 會保留這些分支各自對應的狀態，即使它們之後的行為其實一樣。Minimization 就是找出這種「行為上沒有差別」的狀態並合併，得到狀態數最少的等價 DFA。
+
+### 13B.1 情境
+
+對應第 8 節的文件 D：找甲老師、乙老師或丙老師簽名皆可，簽完之後不論找的是誰，後續都只剩「送到系辦」這一條路。
+
+### 13B.2 轉換前後對照
+
+```
+NFA → DFA（尚未 Minimize）：
+(Start) --SignByAdvisor--> (SignedByA)
+(Start) --SignByClubAdvisor--> (SignedByB)
+(Start) --SignByTeacher--> (SignedByC)
+(SignedByA) --SubmitToOffice--> (Complete)
+(SignedByB) --SubmitToOffice--> (Complete)
+(SignedByC) --SubmitToOffice--> (Complete)
+
+Minimize 之後：
+(Start) --SignByAdvisor / SignByClubAdvisor / SignByTeacher--> (Signed)
+(Signed) --SubmitToOffice--> (Complete)
+```
+
+SignedByA / SignedByB / SignedByC 這三個狀態合併成一個 Signed，因為它們之後能走的路完全一樣。誰簽的名字仍然保留在玩家的操作紀錄(Trace)裡，只是驗證用的自動機狀態被合併，兩者是分開的東西。
+
+### 13B.3 為什麼這個例子可以合併，文件 B 不行
+
+文件 B 是「兩位老師都要簽、不限順序」，簽了甲之後還欠乙、簽了乙之後還欠甲，這兩個狀態接下來要走的下一步不一樣，自動機必須記得「還欠誰」，不能合併。文件 D 是「找誰簽都一樣，之後都是同一條路」，簽完之後不需要記得「是誰簽的」，才能合併。這個對照可以直接放進報告，說明 Minimization 適用與不適用的界線。
+
+### 13B.4 開發項目（規劃中，尚未實作）
+
+- [ ] 建立文件 D 的 NFA 資料
+- [ ] 執行 NFA → DFA 轉換，確認轉換後確實產生 3 個對應狀態
+- [ ] 實作 Minimization 演算法(狀態等價判斷 / table-filling)
+- [ ] 在 Automaton Viewer 顯示 Minimize 前後的狀態數對照
+- [ ] 建立測試：Minimize 前後對相同 Trace 的驗證結果一致
+
+---
+
 ## 14. Verification Engine
 
 Verification Engine 是本專題最重要的核心模組。
@@ -621,7 +755,9 @@ src/
 │   ├── DFA.ts
 │   ├── NFA.ts
 │   ├── transition.ts
-│   └── nfaToDfa.ts
+│   ├── nfaToDfa.ts
+│   ├── pda.ts               ← 規劃中：加退選案例（見第 13A 節）
+│   └── minimize.ts          ← 規劃中：任一位老師簽名皆可案例（見第 13B 節）
 │
 ├── verification/
 │   ├── verifier.ts
@@ -690,6 +826,22 @@ src/
 - [x] 建立行政流程 Automata（含撲空 StaffAbsent → REJECT 的處理，見第 9.3 節）
 - [x] 建立合法 Trace 測試
 - [x] 建立非法 Trace 測試
+
+### Phase 2A：PDA（加退選案例，規劃中，見第 13A 節）
+
+- [ ] 建立 PDA 資料結構
+- [ ] 實作 PDA Simulation
+- [ ] 接上 Verification Engine 的 Invalid Transition 判定
+- [ ] Automaton Viewer 加上 Stack 顯示
+- [ ] 建立合法 / 非法 Trace 測試
+
+### Phase 2B：DFA Minimization（任一位老師簽名皆可案例，規劃中，見第 13B 節）
+
+- [ ] 建立文件 D 的 NFA 資料
+- [ ] 執行 NFA → DFA 轉換
+- [ ] 實作 Minimization 演算法
+- [ ] Automaton Viewer 顯示 Minimize 前後對照
+- [ ] 建立 Minimize 前後驗證結果一致的測試
 
 ### Phase 3：Verification Engine
 
