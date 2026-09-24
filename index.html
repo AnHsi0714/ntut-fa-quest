@@ -37,7 +37,8 @@
           </div>
           <div id="hud">
             <span id="hud-hint" class="pixel-frame"
-              >方向鍵 / WASD 移動，靠近 NPC 後按 Enter / Space 互動，Q 切換任務，T 跳轉時間</span
+              >方向鍵 / WASD 移動，靠近 NPC 後按 Enter / Space 互動，Q 切換任務，T 跳轉時間，V 顯示
+              Automaton</span
             >
           </div>
         </div>
@@ -47,12 +48,38 @@
           aria-labelledby="verification-panel-heading"
         >
           <h2 id="verification-panel-heading" class="panel-title">流程驗證</h2>
+          <button id="show-automaton-button" type="button" class="panel-action-button">
+            顯示 Automaton（V）
+          </button>
           <p id="verification-state-line">
             目前 State：<span id="verification-state" class="pixel-font">-</span>
           </p>
           <p id="verification-result" class="badge badge-idle pixel-font">尚未開始</p>
           <ul id="verification-trace"></ul>
         </section>
+      </div>
+      <div
+        id="automaton-viewer"
+        class="hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="automaton-viewer-title"
+      >
+        <div id="automaton-viewer-panel" class="pixel-frame">
+          <div id="automaton-viewer-header">
+            <h2 id="automaton-viewer-title" class="panel-title">Automaton</h2>
+            <button id="automaton-viewer-close" type="button" aria-label="關閉 Automaton 視窗">
+              ✕
+            </button>
+          </div>
+          <div id="automaton-viewer-mode"></div>
+          <p id="automaton-viewer-result" class="badge badge-idle pixel-font">尚未開始</p>
+          <div id="automaton-viewer-svg"></div>
+          <p id="automaton-viewer-legend">
+            綠色實線＋編號：已經走過的合法 transition（依 Trace 順序）。黃色虛線：目前合法的下一步。灰色：其他
+            transition。紅色虛線＋✗：REJECT 時剛才送出但沒有對應 transition 的事件。按 V 或 Esc 關閉。
+          </p>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

@@ -539,9 +539,9 @@ VisitDepartmentOffice
 
 - [x] 顯示完整 Trace
 - [x] 顯示目前 State
-- [ ] 顯示目前 Event
+- [x] 顯示目前 Event
 - [x] 顯示下一個合法操作
-- [ ] 顯示錯誤位置
+- [x] 顯示錯誤位置
 - [x] 顯示錯誤原因
 
 ---
@@ -570,12 +570,12 @@ VisitDepartmentOffice
 
 開發項目：
 
-- [ ] 建立 Automaton Viewer
-- [ ] 顯示 State
-- [ ] 顯示 Transition
-- [ ] Highlight Current State
-- [ ] Highlight Executed Transition
-- [ ] 顯示 Accept / Reject
+- [x] 建立 Automaton Viewer
+- [x] 顯示 State
+- [x] 顯示 Transition
+- [x] Highlight Current State
+- [x] Highlight Executed Transition
+- [x] 顯示 Accept / Reject
 
 ---
 
@@ -595,15 +595,7 @@ SVG
 JSON
 ```
 
-不使用
-
-- [ ] Unity
-- [ ] Unreal Engine
-- [ ] 3D
-- [ ] Backend
-- [ ] Database
-- [ ] Multiplayer
-- [ ] Login System
+不使用：Unity、Unreal Engine、3D、Backend、Database、Multiplayer、Login System。
 
 遊戲完成後可以直接透過瀏覽器開啟，方便課堂展示。
 
@@ -738,18 +730,18 @@ src/
 - [x] 顯示 ACCEPT / REJECT
 - [x] 顯示錯誤原因
 - [x] 顯示 Counterexample
-- [ ] 遊戲內顯示 Automaton
+- [x] 遊戲內顯示 Automaton
 - [x] 確認時間 / 體力 / 臨時任務事件不會誤入 Trace
 
 ### Phase 6：視覺化
 
-- [ ] 建立 Automaton Viewer
-- [ ] 顯示 State
-- [ ] 顯示 Transition
-- [ ] Highlight Current State
-- [ ] 顯示玩家 Trace
-- [ ] 顯示 Verification Result
-- [ ] 建立 NFA / DFA 顯示模式
+- [x] 建立 Automaton Viewer
+- [x] 顯示 State
+- [x] 顯示 Transition
+- [x] Highlight Current State
+- [x] 顯示玩家 Trace
+- [x] 顯示 Verification Result
+- [x] 建立 NFA / DFA 顯示模式
 
 ### Phase 7：測試
 
@@ -814,7 +806,7 @@ MVP 必須包含
 - [ ] Trace Recorder
 - [ ] ACCEPT / REJECT
 - [ ] Counterexample
-- [ ] Automaton Visualization
+- [x] Automaton Visualization
 
 ---
 
