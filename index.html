@@ -15,10 +15,16 @@
   <body>
     <div id="app">
       <h1 id="game-title" class="pixel-font">NTUT FA Quest</h1>
-      <div id="status-bar" class="pixel-frame" role="status" aria-live="polite">
-        <span id="status-time">時段：-</span>
+      <!-- 時鐘每秒都在走，這裡刻意不設 aria-live，避免螢幕報讀器一直朗讀時間；閉校等重要事件由對話框通知。 -->
+      <div id="status-bar" class="pixel-frame">
+        <span id="status-time">第 1 天 08:00</span>
         <span id="status-stamina">體力：-</span>
-        <span id="status-hint">按 T 跳轉時間</span>
+        <span id="status-location">位置：-</span>
+        <!-- 操作提示放在狀態列，不要疊在地圖上，避免蓋住建築物內上方房間的名稱。 -->
+        <span id="status-hint"
+          >方向鍵 / WASD 移動（按住 Shift 跑步，比較耗體力），碰到 NPC 或面對樓梯、電梯按 Enter /
+          Space 互動，Q 切換任務，T 跳到下個時段（20:00 閉校），V 顯示 Automaton</span
+        >
       </div>
       <div id="game-layout">
         <section id="quest-panel" class="pixel-frame" aria-labelledby="quest-panel-heading">
@@ -35,11 +41,15 @@
             <p id="dialogue-text"></p>
             <p id="dialogue-hint">按 Enter / Space 繼續</p>
           </div>
-          <div id="hud">
-            <span id="hud-hint" class="pixel-frame"
-              >方向鍵 / WASD 移動，靠近 NPC 後按 Enter / Space 互動，Q 切換任務，T 跳轉時間，V 顯示
-              Automaton</span
-            >
+          <div
+            id="floor-menu"
+            class="pixel-frame hidden"
+            role="dialog"
+            aria-labelledby="floor-menu-title"
+          >
+            <p id="floor-menu-title"></p>
+            <ul id="floor-menu-options"></ul>
+            <p id="floor-menu-hint">↑↓ 選擇樓層，Enter 確認，Esc 取消</p>
           </div>
         </div>
         <section

@@ -4,16 +4,19 @@ export class GameMap {
   readonly width: number;
   readonly height: number;
   private readonly tiles: TileType[][];
+  /** 地圖範圍外要畫什麼：戶外是樹林，建築物裡是牆（比畫面窄的樓層置中後兩側會露出來）。 */
+  private readonly outsideTile: TileType;
 
-  constructor(width: number, height: number, tiles: TileType[][]) {
+  constructor(width: number, height: number, tiles: TileType[][], outsideTile = TileType.Border) {
     this.width = width;
     this.height = height;
     this.tiles = tiles;
+    this.outsideTile = outsideTile;
   }
 
   getTile(x: number, y: number): TileType {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
-      return TileType.Border;
+      return this.outsideTile;
     }
     return this.tiles[y][x];
   }

@@ -86,7 +86,12 @@ body {
   font-weight: 700;
 }
 
+#status-location {
+  font-weight: 700;
+}
+
 #status-hint {
+  flex-basis: 100%;
   color: var(--color-text-dim);
 }
 
@@ -131,23 +136,20 @@ body {
   white-space: nowrap;
 }
 
-#hud {
+/* 建築物 / 房間 / 校門名稱：半透明深色底 + 金色字，不管底下是草地還是廣場都維持 AA 對比度。 */
+.place-label {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
+  left: 0;
+  top: 0;
+  padding: 1px 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+  background: rgba(15, 15, 26, 0.9);
+  border-radius: 2px;
+  white-space: nowrap;
 }
 
-#hud-hint {
-  --pixel-corner: 4px;
-  background: rgba(15, 15, 26, 0.85);
-  color: var(--color-text);
-  font-size: 13px;
-  padding: 5px 12px;
-}
 
 #dialogue-box {
   position: absolute;
@@ -175,6 +177,93 @@ body {
   line-height: 1.4;
   color: var(--color-text);
   white-space: pre-line;
+}
+
+/* ---------- 樓梯 / 電梯樓層選單 ---------- */
+
+#floor-menu {
+  --pixel-corner: 6px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+}
+
+#floor-menu.hidden {
+  display: none;
+}
+
+#floor-menu-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+/* 樓層很多（科研大樓 16 層）時只讓選項清單捲動，標題與操作提示固定在上下。 */
+#floor-menu-options {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.floor-menu-option {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 10px;
+  font: inherit;
+  text-align: left;
+  color: var(--color-text);
+  background: transparent;
+  border: 2px solid var(--color-panel-border);
+  cursor: pointer;
+}
+
+.floor-menu-option:hover,
+.floor-menu-option:focus-visible {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.floor-menu-option.selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.floor-menu-floor {
+  flex: 0 0 auto;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.floor-menu-detail {
+  font-size: 14px;
+  color: var(--color-text-dim);
+}
+
+.floor-menu-option.selected .floor-menu-detail {
+  color: var(--color-bg);
+}
+
+#floor-menu-hint {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: var(--color-text-dim);
+  text-align: right;
 }
 
 #dialogue-hint {
@@ -290,6 +379,15 @@ body {
 }
 
 .step-pending {
+  color: var(--color-text-dim);
+}
+
+/* 步驟要去的辦公室位置：只顯示固定辦公室，不追蹤 NPC 當下位置。 */
+.step-location {
+  display: block;
+  padding-left: 1.4em;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--color-text-dim);
 }
 

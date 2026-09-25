@@ -1,5 +1,12 @@
 import type { GameMap } from "./map";
-import { getTileSet, TILE_SIZE } from "./tileArt";
+import {
+  getEmptySeatSprite,
+  getOpenDoorSprite,
+  getRoomCoverSprite,
+  getTileSet,
+  TILE_SIZE,
+} from "./tileArt";
+import type { RoomRegion } from "./area";
 import type { Camera } from "./camera";
 import type { Player } from "./player";
 import type { Npc } from "./npc";
@@ -26,17 +33,52 @@ export class Renderer {
     return this.canvas.height;
   }
 
-  draw(map: GameMap, camera: Camera, player: Player, npcs: Npc[]): void {
+  draw(
+    map: GameMap,
+    camera: Camera,
+    player: Player,
+    npcs: Npc[],
+    rooms: { visible: RoomRegion[]; hidden: RoomRegion[] } = { visible: [], hidden: [] }
+  ): void {
     const { ctx } = this;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.drawTiles(map, camera);
+    // 玩家所在（或站在門口）的房間，門畫成打開的樣子
+    const openDoor = getOpenDoorSprite();
+    for (const room of rooms.visible) {
+      this.drawSprite(openDoor, room.doorX, room.doorY, camera);
+    }
 
-    const entities: Array<Player | Npc> = [...npcs, player];
+    // 呼叫端只會傳入跟玩家在同一個區域的 NPC。不在場的 NPC 不畫人，只在他的位置畫一張空椅子，
+    // 玩家看得出「這裡平常有人、現在不在」，走過去互動一樣會記錄成撲空。
+    const seat = getEmptySeatSprite();
+    for (const npc of npcs) {
+      if (npc.isPresent) continue;
+      ctx.drawImage(seat, Math.round(npc.pixelX - camera.x), Math.round(npc.pixelY - camera.y));
+    }
+
+    const entities: Array<Player | Npc> = [...npcs.filter((npc) => npc.isPresent), player];
     entities.sort((a, b) => a.tileY - b.tileY);
     for (const entity of entities) {
       entity.draw(ctx, camera, 1);
     }
+
+    // 門關著的房間最後整個蓋上天花板，連裡面的人和空椅子都看不到
+    const cover = getRoomCoverSprite();
+    for (const room of rooms.hidden) {
+      for (let y = room.y0; y <= room.y1; y++) {
+        for (let x = room.x0; x <= room.x1; x++) this.drawSprite(cover, x, y, camera);
+      }
+    }
+  }
+
+  private drawSprite(sprite: HTMLCanvasElement, tileX: number, tileY: number, camera: Camera): void {
+    this.ctx.drawImage(
+      sprite,
+      Math.round(tileX * TILE_SIZE - camera.x),
+      Math.round(tileY * TILE_SIZE - camera.y)
+    );
   }
 
   private drawTiles(map: GameMap, camera: Camera): void {
