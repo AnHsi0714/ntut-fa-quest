@@ -95,6 +95,15 @@ function drawRoad(ctx: CanvasRenderingContext2D): void {
   ctx.fillRect(11, 7, 4, 2);
 }
 
+/** 人行穿越道：柏油路面加上垂直於馬路方向的白色斑馬線，玩家從正校門過忠孝東路走這裡。 */
+function drawCrosswalk(ctx: CanvasRenderingContext2D): void {
+  fillBase(ctx, "#4a4a52");
+  ctx.fillStyle = "#e6e2d3";
+  ctx.fillRect(0, 1, TILE_SIZE, 3);
+  ctx.fillRect(0, 7, TILE_SIZE, 3);
+  ctx.fillRect(0, 13, TILE_SIZE, 3);
+}
+
 function drawGate(ctx: CanvasRenderingContext2D): void {
   fillBase(ctx, "#c9c2b2");
   ctx.fillStyle = "#a79f8c";
@@ -280,6 +289,7 @@ const DRAWERS: Record<TileType, (ctx: CanvasRenderingContext2D) => void> = {
   [TileType.Door]: drawDoor,
   [TileType.Border]: drawBorder,
   [TileType.Road]: drawRoad,
+  [TileType.Crosswalk]: drawCrosswalk,
   [TileType.Gate]: drawGate,
   [TileType.Floor]: drawFloor,
   [TileType.InteriorWall]: drawInteriorWall,

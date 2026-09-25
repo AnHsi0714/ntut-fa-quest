@@ -24,7 +24,12 @@ import {
 
 export const OUTDOOR_AREA_ID = "campus";
 export const MAP_WIDTH = 56;
-export const MAP_HEIGHT = 40;
+/** 圍籬內的校園本體高度（不含忠孝東路對面的街廓）。 */
+const CAMPUS_HEIGHT = 40;
+/** 忠孝東路：CAMPUS_HEIGHT 前兩排，正校門正對著它，過馬路就會走到對面的先鋒大樓。 */
+const ZHONGXIAO_ROAD_ROWS: [number, number] = [CAMPUS_HEIGHT - 2, CAMPUS_HEIGHT - 1];
+/** 地圖總高度：校園本體 + 忠孝東路對面的街廓（先鋒大樓）。 */
+export const MAP_HEIGHT = CAMPUS_HEIGHT + 11;
 
 /** 正門（忠孝東路）進來的第一格：遊戲開始、每天晚上 8:00 閉校後都會回到這裡。 */
 export const MAIN_GATE_SPAWN = { areaId: OUTDOOR_AREA_ID, x: 39, y: 36, direction: "up" as Direction };
@@ -89,8 +94,14 @@ interface OutdoorBuilding {
   h: number;
   /** 外牆材質，見 tileTypes.ts 的說明。 */
   material: WallMaterial;
-  /** 大門位置（位在建築物最下面一排），走上去就會進到 1F。 */
+  /** 大門位置，走上去就會進到 1F；預設在建築物最下面一排，見 entranceSide。 */
   door?: { x: number; y: number };
+  /**
+   * 大門面向哪一側，決定走出大門後玩家出現的位置與面向。預設 "south"（大門在建築物最下面一排，
+   * 出來後站在門口正下方、面向下）；先鋒大樓的門在北側（面向忠孝東路對面的正校門），
+   * 出來後要站在門口正上方、面向上，才不會一出來就對著自己剛走出來的牆。
+   */
+  entranceSide?: "south" | "north";
   interior?: { topFloor: number; basementCount?: number; layout: BuildingLayout };
 }
 
@@ -215,8 +226,7 @@ const BUILDINGS: OutdoorBuilding[] = [
   },
   {
     id: "sixth",
-    // 第六教學大樓：地上 7 層，長條型。B1 是國際會議廳（校園平面圖）；
-    // 地下 4 樓是美食街（北科大國際處「校內生活服務介紹」），B2、B3 查不到用途，不放房間。
+    // 第六教學大樓：地上 7 層，長條型。B1 是國際會議廳（校園平面圖）；B2～B4 查不到用途，不放房間。
     name: "第六教學大樓",
     material: TileType.WallConcrete,
     x: 14,
@@ -239,16 +249,14 @@ const BUILDINGS: OutdoorBuilding[] = [
           6: ["625", "626", "627"],
           7: ["725", "726", "727"],
         },
-        {
-          [-1]: { south: [{ name: "國際會議廳", span: 2 }] },
-          [-4]: { south: [{ name: "六教美食街", span: 2, open: true }] },
-        }
+        { [-1]: { south: [{ name: "國際會議廳", span: 2 }] } }
       ),
     },
   },
   {
     id: "guanghua",
-    // 光華館：1、2 樓是學生餐廳（北科大國際處「校內生活服務介紹」）；4F 有 400～410 教室（教室使用表），所以至少 4 層。
+    // 光華館：1、2 樓是「綠光庭園」餐廳區，裡面有路易莎等店家（Dcard「北科學餐 綠光庭園」）；
+    // 4F 有 400～410 教室（教室使用表），所以至少 4 層。
     name: "光華館",
     material: TileType.WallConcrete,
     x: 4,
@@ -259,8 +267,8 @@ const BUILDINGS: OutdoorBuilding[] = [
     interior: {
       topFloor: 4,
       layout: stripBuilding(2, 2, 4, {
-        1: [{ name: "學生餐廳", span: 2 }],
-        2: [{ name: "學生餐廳", span: 2 }],
+        1: [{ name: "綠光庭園", span: 2 }],
+        2: [{ name: "綠光庭園", span: 2 }],
         4: ["400", "403", "404", "405", "406", "410"],
       }),
     },
@@ -469,8 +477,57 @@ const BUILDINGS: OutdoorBuilding[] = [
   { id: "chemistry", name: "化學館", material: TileType.WallWashedStone, x: 32, y: 16, w: 5, h: 4 },
   { id: "redHouse", name: "紅樓", material: TileType.WallRedBrick, x: 26, y: 19, w: 4, h: 2 },
   { id: "history", name: "校史館", material: TileType.WallWashedStone, x: 17, y: 21, w: 3, h: 7 },
-  { id: "library", name: "圖書館", material: TileType.WallTanMosaic, x: 32, y: 21, w: 6, h: 4 },
+  {
+    id: "library",
+    // 圖書館：官網「樓層配置」頁面列出各樓層服務分區。
+    name: "圖書館",
+    material: TileType.WallTanMosaic,
+    x: 32,
+    y: 21,
+    w: 6,
+    h: 4,
+    door: { x: 34, y: 24 },
+    interior: {
+      topFloor: 3,
+      basementCount: 1,
+      layout: stripBuilding(
+        1,
+        1,
+        3,
+        {
+          1: ["資料檢索區", "老蕭書房", "多媒體學習中心", "流通服務檯"],
+          2: ["西文書區", "期刊資料區", "自學中心", "漫畫區"],
+          3: ["參考書區", "論文區", "中文書區", "期刊合訂本區"],
+        },
+        { [-1]: { north: ["視聽室", "自習室"] } }
+      ),
+    },
+  },
   { id: "artCenter", name: "藝文中心", material: TileType.WallConcrete, x: 32, y: 32, w: 5, h: 1 },
+  {
+    id: "pioneer",
+    // 先鋒國際研發大樓：官網「本校導覽」提到位在正門對面（忠孝東路），需要過馬路才能到；
+    // 2022 年啟用。課務系統教室使用表查得到 2F、4F、5F、6F、14F 的房號，其餘樓層補上房號。
+    name: "先鋒大樓",
+    material: TileType.WallGlass,
+    x: 36,
+    y: 42,
+    w: 8,
+    h: 6,
+    door: { x: 39, y: 42 },
+    // 大門面向忠孝東路（北側），跟其他建築物的大門方向相反。
+    entranceSide: "north",
+    interior: {
+      topFloor: 14,
+      layout: stripBuilding(3, 3, 14, {
+        2: ["201", "202", "203"],
+        4: ["401", "402", "403", "404"],
+        5: ["501", "502", "503", "504"],
+        6: ["601", "602"],
+        14: [{ name: "1402 問題導向學習教室" }],
+      }),
+    },
+  },
 ];
 
 function buildOutdoorArea(
@@ -479,26 +536,26 @@ function buildOutdoorArea(
 ): Area {
   const grid = createGrid(MAP_WIDTH, MAP_HEIGHT, TileType.Grass);
 
-  // 校外馬路：西邊新生南路、東邊建國南路、南邊忠孝東路
+  // 校外馬路：西邊新生南路、東邊建國南路（貫穿整張地圖，包含忠孝東路對面的街廓）、南邊忠孝東路
   fillRect(grid, 0, 0, 2, MAP_HEIGHT, TileType.Road);
   fillRect(grid, MAP_WIDTH - 2, 0, 2, MAP_HEIGHT, TileType.Road);
-  fillRect(grid, 0, MAP_HEIGHT - 2, MAP_WIDTH, 2, TileType.Road);
+  fillRect(grid, 0, ZHONGXIAO_ROAD_ROWS[0], MAP_WIDTH, 2, TileType.Road);
 
-  // 校園圍籬（樹林），把玩家限制在校園範圍內
+  // 校園圍籬（樹林），只圍住校園本體；忠孝東路對面的街廓（先鋒大樓）另外圍一圈
   fillRect(grid, 2, 0, MAP_WIDTH - 4, 1, TileType.Border);
-  fillRect(grid, 2, 0, 1, MAP_HEIGHT - 2, TileType.Border);
-  fillRect(grid, MAP_WIDTH - 3, 0, 1, MAP_HEIGHT - 2, TileType.Border);
-  fillRect(grid, 2, MAP_HEIGHT - 3, MAP_WIDTH - 4, 1, TileType.Border);
+  fillRect(grid, 2, 0, 1, ZHONGXIAO_ROAD_ROWS[0], TileType.Border);
+  fillRect(grid, MAP_WIDTH - 3, 0, 1, ZHONGXIAO_ROAD_ROWS[0], TileType.Border);
+  fillRect(grid, 2, ZHONGXIAO_ROAD_ROWS[0] - 1, MAP_WIDTH - 4, 1, TileType.Border);
 
   // 校門：正校門（忠孝東路）、新生校門、新生側門（新生南路）、建國側門（建國南路）。
   // 道路都是 4 格寬，玩家跟走動的學生可以錯身而過。
-  fillRect(grid, 38, MAP_HEIGHT - 3, 4, 1, TileType.Gate);
+  fillRect(grid, 38, ZHONGXIAO_ROAD_ROWS[0] - 1, 4, 1, TileType.Gate);
   fillRect(grid, 2, 12, 1, 4, TileType.Gate);
   fillRect(grid, 2, 25, 1, 4, TileType.Gate);
   fillRect(grid, MAP_WIDTH - 3, 17, 1, 4, TileType.Gate);
 
   // 道路
-  fillRect(grid, 38, 12, 4, MAP_HEIGHT - 15, TileType.Path); // 正校門往北的主幹道
+  fillRect(grid, 38, 12, 4, CAMPUS_HEIGHT - 15, TileType.Path); // 正校門往北的主幹道
   fillRect(grid, 3, 12, 35, 4, TileType.Path); // 新生校門進來、橫貫校園北側的道路
   fillRect(grid, 42, 17, MAP_WIDTH - 45, 4, TileType.Path); // 建國側門進來的道路
   fillRect(grid, 3, 25, 10, 4, TileType.Path); // 新生側門進來的道路
@@ -506,10 +563,23 @@ function buildOutdoorArea(
   // 正校門內、行政大樓前的廣場
   fillRect(grid, 31, 33, 8, 4, TileType.Plaza);
 
+  // 忠孝東路對面的街廓（先鋒大樓）：人行穿越道 + 圍住這一塊的樹林
+  fillRect(grid, 38, ZHONGXIAO_ROAD_ROWS[0], 4, 2, TileType.Crosswalk);
+  fillRect(grid, 2, ZHONGXIAO_ROAD_ROWS[1] + 1, 1, MAP_HEIGHT - ZHONGXIAO_ROAD_ROWS[1] - 2, TileType.Border);
+  fillRect(
+    grid,
+    MAP_WIDTH - 3,
+    ZHONGXIAO_ROAD_ROWS[1] + 1,
+    1,
+    MAP_HEIGHT - ZHONGXIAO_ROAD_ROWS[1] - 2,
+    TileType.Border
+  );
+  fillRect(grid, 2, MAP_HEIGHT - 1, MAP_WIDTH - 4, 1, TileType.Border);
+
   const warps: Warp[] = [];
   const labels: PlaceLabel[] = [
     // 正門標籤放在校門外的忠孝東路上，不要蓋住站在門內的警衛
-    { text: "正校門（忠孝東路）", x: 39.5, y: MAP_HEIGHT - 1 },
+    { text: "正校門（忠孝東路）", x: 39.5, y: ZHONGXIAO_ROAD_ROWS[1] },
     { text: "新生校門", x: 3.5, y: 12 },
     { text: "新生側門", x: 3.5, y: 25 },
     { text: "建國側門", x: MAP_WIDTH - 5, y: 17 },
@@ -550,11 +620,17 @@ function buildOutdoorArea(
 
 function toBuildingSpec(building: OutdoorBuilding): BuildingSpec | undefined {
   if (!building.door || !building.interior) return undefined;
+  const north = building.entranceSide === "north";
   return {
     ...building.interior,
     id: building.id,
     name: building.name,
-    outdoorExit: { areaId: OUTDOOR_AREA_ID, x: building.door.x, y: building.door.y + 1 },
+    outdoorExit: {
+      areaId: OUTDOOR_AREA_ID,
+      x: building.door.x,
+      y: building.door.y + (north ? -1 : 1),
+      direction: north ? "up" : "down",
+    },
   };
 }
 
@@ -686,8 +762,8 @@ function declareServiceNpcs(w: WorldLookup): NpcSpawn[] {
       paletteKey: "cafeteria",
       kind: "fixed",
       service: "meal",
-      locationLabel: "光華館 1F 學生餐廳",
-      ...w.inRoom("guanghua", 1, "學生餐廳"),
+      locationLabel: "光華館 1F 綠光庭園",
+      ...w.inRoom("guanghua", 1, "綠光庭園"),
       greeting: "歡迎光臨！吃飽才有力氣跑行政流程。",
     },
     {
@@ -696,19 +772,9 @@ function declareServiceNpcs(w: WorldLookup): NpcSpawn[] {
       paletteKey: "cafeteria",
       kind: "fixed",
       service: "meal",
-      locationLabel: "光華館 2F 學生餐廳",
-      ...w.inRoom("guanghua", 2, "學生餐廳"),
+      locationLabel: "光華館 2F 綠光庭園",
+      ...w.inRoom("guanghua", 2, "綠光庭園"),
       greeting: "二樓也有位子，慢慢吃。",
-    },
-    {
-      id: "foodCourt",
-      name: "美食街店員",
-      paletteKey: "cafeteria",
-      kind: "fixed",
-      service: "meal",
-      locationLabel: "第六教學大樓 B4 美食街",
-      ...w.inRoom("sixth", -4, "六教美食街"),
-      greeting: "六教地下四樓美食街，要吃什麼？",
     },
     {
       id: "printShop",
@@ -778,15 +844,16 @@ function declareHelperNpcs(w: WorldLookup): NpcSpawn[] {
       locationLabel: "正校門",
       areaId: OUTDOOR_AREA_ID,
       x: 41,
-      y: MAP_HEIGHT - 3,
+      y: ZHONGXIAO_ROAD_ROWS[0] - 1,
       direction: "up",
       greeting: "我是正門警衛。",
       lines: [
         "我是正門警衛。校園晚上 8 點關門，時間到了我會請你離開，隔天早上 8 點再來。",
         `要找辦公室的話：承辦老師在${OFFICES.advisor}；系辦是${OFFICES.department}，系主任室就在隔壁；教務處在行政大樓 2F。`,
         "科研大樓：沿主幹道往北走到底，再沿新生校門那條路往西就到了。行政大樓：正校門進來左手邊，廣場後面。",
-        "肚子餓的話，光華館 1F 和六教 B4 美食街都有吃的，吃飽體力就回來了。各棟 1F 大廳也有休息區可以坐一下。",
+        "肚子餓的話，光華館 1、2F 的綠光庭園有得吃，吃飽體力就回來了。各棟 1F 大廳也有休息區可以坐一下。",
         "要印申請單的話，科研大樓 B3 有影印中心；成績單要到行政大樓 2F、5F 或三教 1F 的列印機印。",
+        "正校門正對面過個馬路就是先鋒大樓，走人行穿越道過去比較安全。",
       ],
     },
     {
@@ -801,7 +868,7 @@ function declareHelperNpcs(w: WorldLookup): NpcSpawn[] {
       direction: "right",
       greeting: "這裡是新生校門。",
       lines: [
-        "這裡是新生校門。往北是光華館、科研大樓跟六教，往東沿著這條路一直走就會接到正校門的主幹道。",
+        "這裡是新生校門。往北是光華館（綠光庭園）、科研大樓跟六教，往東沿著這條路一直走就會接到正校門的主幹道。",
         "科研大樓 B3 有影印中心，印申請單就去那邊。",
         "晚上 8 點全校關門，關門後會請大家從正校門離開。",
       ],
@@ -943,7 +1010,7 @@ function declareHelperNpcs(w: WorldLookup): NpcSpawn[] {
       greeting: "社團博覽會快到了！",
       lines: [
         "學生活動中心在建國南路側門附近，社團活動大多在那邊。",
-        "六教地下四樓有美食街，光華館一、二樓也有餐廳。",
+        "光華館一、二樓是綠光庭園，有路易莎可以喝咖啡。",
       ],
       // 學生活動中心、建國側門道路、綜合科館門口、主幹道
       destinations: [

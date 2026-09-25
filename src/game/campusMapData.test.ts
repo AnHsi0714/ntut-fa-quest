@@ -102,6 +102,16 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
     }
   });
 
+  it("走進大門後不會立刻被彈回門外：入口降落點跟室內出口至少隔一格", () => {
+    for (const area of areas.values()) {
+      if (area.building?.floor !== 1) continue;
+      const { entranceArrival } = anchorsOf(area);
+      const exitWarp = area.warps[0];
+      const distance = Math.abs(exitWarp.x - entranceArrival.x) + Math.abs(exitWarp.y - entranceArrival.y);
+      expect(distance, area.id).toBeGreaterThan(1);
+    }
+  });
+
   it("每個 NPC 都站在所屬區域的可走格子上，玩家走得到它旁邊", () => {
     for (const spawn of npcSpawns) {
       const area = areas.get(spawn.areaId);
@@ -253,10 +263,10 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
     expect(areas.get("teaching3-1F")!.rooms.map((room) => room.name)).toContain("聯合服務中心");
   });
 
-  it("光華館的學生餐廳有門（不是開放空間），1F、2F 都有餐廳人員", () => {
+  it("光華館的綠光庭園有門（不是開放空間），1F、2F 都有餐廳人員", () => {
     for (const floor of [1, 2]) {
       const area = areas.get(`guanghua-${floor}F`)!;
-      const restaurant = area.rooms.find((room) => room.name === "學生餐廳")!;
+      const restaurant = area.rooms.find((room) => room.name === "綠光庭園")!;
       expect(restaurant.open, area.id).toBe(false);
       expect(area.map.getTile(restaurant.doorX, restaurant.doorY), area.id).toBe(TileType.Door);
       const staff = npcSpawns.find((spawn) => spawn.areaId === area.id && spawn.service === "meal");
@@ -325,6 +335,53 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
     for (let x = 4; x <= 36; x++) {
       const width = [12, 13, 14, 15].filter((y) => pathLike(x, y)).length;
       expect(width, `北側道路 x=${x}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("先鋒大樓在忠孝東路對面：從正校門走得到人行穿越道，過馬路後走得到先鋒大樓大門", () => {
+    const reachable = reachableFrom(outdoor.map, MAIN_GATE_SPAWN.x, MAIN_GATE_SPAWN.y);
+    const pioneerWarp = outdoor.warps.find((warp) => warp.toAreaId.startsWith("pioneer-"));
+    expect(pioneerWarp, "先鋒大樓的大門傳送點").toBeDefined();
+    expect(reachable.has(`${pioneerWarp!.x},${pioneerWarp!.y}`)).toBe(true);
+  });
+
+  it("先鋒大樓的門面向忠孝東路（北側），出來後站在門口正上方、面向上", () => {
+    const pioneer1F = areas.get("pioneer-1F")!;
+    expect(pioneer1F.warps).toHaveLength(1);
+    const exit = pioneer1F.warps[0];
+    const door = outdoor.warps.find((warp) => warp.toAreaId === "pioneer-1F")!;
+    expect(exit.toY, "出來後應該站在門口正上方（y 較小）").toBe(door.y - 1);
+    expect(exit.direction).toBe("up");
+  });
+
+  it("先鋒大樓地上 14 層（教室使用表查到 1402 室）", () => {
+    expect(areas.has("pioneer-14F")).toBe(true);
+    expect(areas.has("pioneer-15F")).toBe(false);
+  });
+
+  it("圖書館可以進入，各樓層房間名稱照官網樓層配置", () => {
+    expect(areas.get("library-1F")?.rooms.map((room) => room.name)).toEqual(
+      expect.arrayContaining(["資料檢索區", "流通服務檯"])
+    );
+    expect(areas.get("library-2F")?.rooms.map((room) => room.name)).toEqual(
+      expect.arrayContaining(["西文書區", "漫畫區"])
+    );
+    expect(areas.get("library-3F")?.rooms.map((room) => room.name)).toEqual(
+      expect.arrayContaining(["參考書區", "論文區"])
+    );
+    expect(areas.get("library-B1")?.rooms.map((room) => room.name)).toEqual(
+      expect.arrayContaining(["視聽室", "自習室"])
+    );
+  });
+
+  it("光華館 1F、2F 都是綠光庭園，兩層各有一位餐廳人員", () => {
+    for (const floor of [1, 2]) {
+      const area = areas.get(`guanghua-${floor}F`)!;
+      expect(area.rooms.map((room) => room.name)).toContain("綠光庭園");
+      expect(
+        npcSpawns.some((spawn) => spawn.areaId === area.id && spawn.service === "meal"),
+        area.id
+      ).toBe(true);
     }
   });
 
