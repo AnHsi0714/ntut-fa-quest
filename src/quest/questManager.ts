@@ -16,6 +16,22 @@ export interface PresenceGatedNpcEvent {
   absent: string;
 }
 
+/**
+ * 任務面板上「多選一」的步驟：anyOf 裡任何一個事件出現在合法 Trace 裡就算完成
+ * （例如文件 D「找任一位老師簽名」）。
+ */
+export interface DisplayStepGroup {
+  label: string;
+  anyOf: string[];
+}
+
+export type DisplayStep = string | DisplayStepGroup;
+
+/** 這個步驟包含哪些事件（單一事件就是自己）。 */
+export function eventsOfStep(step: DisplayStep): string[] {
+  return typeof step === "string" ? [step] : step.anyOf;
+}
+
 interface QuestDefinitionBase {
   id: string;
   name: string;
@@ -38,7 +54,7 @@ interface QuestDefinitionBase {
    * 這種線性 index 來判斷進度；改成「這個事件是否已經出現在合法 Trace 裡」來判斷完成度，
    * 兩種情況都能用同一套 UI 邏輯處理。
    */
-  displaySteps: string[];
+  displaySteps: DisplayStep[];
 }
 
 export interface QuestDfaDefinition extends QuestDefinitionBase {
