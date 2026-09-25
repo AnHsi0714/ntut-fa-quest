@@ -86,6 +86,16 @@ body {
   font-weight: 700;
 }
 
+/* 跑步中的明顯提示：純看移動速度差不容易判斷有沒有生效，額外用文字狀態確認。 */
+#status-run {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+#status-run.hidden {
+  display: none;
+}
+
 #status-location {
   font-weight: 700;
 }

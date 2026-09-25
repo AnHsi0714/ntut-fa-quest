@@ -50,9 +50,13 @@ const GAME_MINUTES_PER_REAL_SECOND = 1;
 
 /** 體力消耗量（計畫書 9.5 節：移動、等待、碰運氣皆會消耗體力）。換樓層的成本見 verticalTravel.ts。 */
 const MOVE_STAMINA_COST = 0.25;
-/** 按住 Shift 跑步：走一格的時間縮短，但每格消耗的體力是走路的 3 倍。 */
+/**
+ * 按住 Shift 跑步：走一格的時間縮短到走路的 44%（約快 2.3 倍），每格消耗的體力是走路的 3 倍。
+ * 原本設成 90ms（約快 1.8 倍）時速度差在畫面上不太容易感覺出來，改成更明顯的差距，
+ * 另外在狀態列加上「跑步中」文字提示，不用只靠移動速度判斷有沒有生效。
+ */
 const RUN_STAMINA_COST = 0.75;
-const RUN_MOVE_DURATION_MS = 90;
+const RUN_MOVE_DURATION_MS = 70;
 const ADVANCE_TIME_STAMINA_COST = 15;
 const PROBE_ABSENT_NPC_STAMINA_COST = 5;
 
@@ -652,6 +656,8 @@ export class Game {
       maxStamina: this.staminaSystem.max,
       location: this.currentArea.id === OUTDOOR_AREA_ID ? "校園" : this.currentArea.name,
       items: [...this.inventory].map(([item, count]) => `${item} ${count} 份`).join("、"),
+      // 按住 Shift 就顯示，不用等到真的移動；讓玩家能立刻確認按鍵有生效。
+      running: this.input.isRunHeld(),
     });
   }
 }

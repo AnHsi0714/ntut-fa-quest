@@ -30,10 +30,20 @@ export class InputManager {
   private readonly heldKeys = new Set<string>();
   private readonly queuedActions = new Set<string>();
   private readonly queuedDirections: Direction[] = [];
+  /**
+   * 是否按著 Shift（跑步）：直接讀瀏覽器算好的 event.shiftKey，而不是自己追蹤
+   * ShiftLeft / ShiftRight 兩顆鍵個別的按下 / 放開。改用這個是因為之前發現只有左邊
+   * Shift 有反應：自己追蹤 code 遇到漏掉的 keyup（例如切換視窗焦點時）就會卡住或失準，
+   * shiftKey 是瀏覽器依當下鍵盤狀態即時算出來的，不管按哪一顆 Shift 都可靠。
+   */
+  private shiftHeld = false;
 
   constructor() {
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
+    // 視窗失去焦點時（切換視窗、按 Alt+Tab）不會再收到 keyup，放開的按鍵會卡在「按著」的狀態，
+    // 回來後角色會一直亂走；焦點一離開就整批清空，回來後玩家得重新按一次才會動，但不會卡死。
+    window.addEventListener("blur", this.handleBlur);
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
@@ -49,10 +59,17 @@ export class InputManager {
       this.queuedDirections.push(direction);
     }
     this.heldKeys.add(event.code);
+    this.shiftHeld = event.shiftKey;
   };
 
   private handleKeyUp = (event: KeyboardEvent): void => {
     this.heldKeys.delete(event.code);
+    this.shiftHeld = event.shiftKey;
+  };
+
+  private handleBlur = (): void => {
+    this.heldKeys.clear();
+    this.shiftHeld = false;
   };
 
   /** 目前按住的方向（若同時按多個方向鍵，取第一個找到的）。 */
@@ -64,9 +81,9 @@ export class InputManager {
     return null;
   }
 
-  /** 是否按住 Shift（跑步）。 */
+  /** 是否按住 Shift（跑步），不分左右。 */
   isRunHeld(): boolean {
-    return this.heldKeys.has("ShiftLeft") || this.heldKeys.has("ShiftRight");
+    return this.shiftHeld;
   }
 
   /** 讀取「這一幀是否觸發互動」，讀取後會自動重置，等同邊緣觸發。 */
@@ -115,5 +132,6 @@ export class InputManager {
   dispose(): void {
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
+    window.removeEventListener("blur", this.handleBlur);
   }
 }
