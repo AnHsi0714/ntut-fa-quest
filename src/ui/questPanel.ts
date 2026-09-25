@@ -1,4 +1,4 @@
-import type { QuestDefinition } from "../quest/questManager";
+import { eventsOfStep, type QuestDefinition } from "../quest/questManager";
 import type { Verifier } from "../verification/verifier";
 
 /**
@@ -28,7 +28,8 @@ export class QuestPanel {
     quest: QuestDefinition,
     verifier: Verifier,
     questIndex: number,
-    questCount: number
+    questCount: number,
+    stepLocations: Record<string, string[]> = {}
   ): void {
     this.nameEl.textContent = quest.name;
     this.switchHintEl.textContent =
@@ -44,18 +45,27 @@ export class QuestPanel {
     const expectedEvents = new Set(verifier.getExpectedEvents());
 
     this.listEl.innerHTML = "";
-    for (const event of quest.displaySteps) {
+    for (const step of quest.displaySteps) {
       const li = document.createElement("li");
-      const label = quest.eventLabels[event] ?? event;
-      if (completedEvents.has(event)) {
+      const events = eventsOfStep(step);
+      const label = typeof step === "string" ? quest.eventLabels[step] ?? step : step.label;
+      if (events.some((event) => completedEvents.has(event))) {
         li.textContent = `✓ ${label}`;
         li.className = "step-done";
-      } else if (expectedEvents.has(event)) {
+      } else if (events.some((event) => expectedEvents.has(event))) {
         li.textContent = `▶ ${label}`;
         li.className = "step-current";
       } else {
         li.textContent = `○ ${label}`;
         li.className = "step-pending";
+      }
+      // 多選一的步驟、或同一件事可以在好幾個地方做（例如成績單），每個地點各列一行
+      const locations = [...new Set(events.flatMap((event) => stepLocations[event] ?? []))];
+      for (const location of locations) {
+        const locationEl = document.createElement("span");
+        locationEl.className = "step-location";
+        locationEl.textContent = location;
+        li.appendChild(locationEl);
       }
       this.listEl.appendChild(li);
     }

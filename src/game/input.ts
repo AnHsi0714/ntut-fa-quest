@@ -18,16 +18,18 @@ const ACTION_KEYS: Record<string, string> = {
   KeyQ: "cycleQuest",
   KeyT: "advanceTime",
   KeyV: "toggleAutomaton",
-  Escape: "closeAutomaton",
+  Escape: "cancel",
 };
 
 /**
  * 鍵盤輸入管理：方向鍵 / WASD 移動，Enter / Space 互動、Q 切換任務、T 跳轉時間、
- * V 顯示 / 關閉 Automaton 視窗（計畫書第 16 節）、Esc 關閉 Automaton 視窗（皆為邊緣觸發）。
+ * V 顯示 / 關閉 Automaton 視窗（計畫書第 16 節）、Esc 關閉視窗或取消選單（皆為邊緣觸發）。
+ * 方向鍵除了「按住持續移動」之外，也會記錄一次性的按下事件，給樓層選單這類需要逐格移動游標的 UI 使用。
  */
 export class InputManager {
   private readonly heldKeys = new Set<string>();
   private readonly queuedActions = new Set<string>();
+  private readonly queuedDirections: Direction[] = [];
 
   constructor() {
     window.addEventListener("keydown", this.handleKeyDown);
@@ -41,6 +43,10 @@ export class InputManager {
     const action = ACTION_KEYS[event.code];
     if (action && !this.heldKeys.has(event.code)) {
       this.queuedActions.add(action);
+    }
+    const direction = DIRECTION_KEYS[event.code];
+    if (direction && !this.heldKeys.has(event.code)) {
+      this.queuedDirections.push(direction);
     }
     this.heldKeys.add(event.code);
   };
@@ -56,6 +62,11 @@ export class InputManager {
       if (direction) return direction;
     }
     return null;
+  }
+
+  /** 是否按住 Shift（跑步）。 */
+  isRunHeld(): boolean {
+    return this.heldKeys.has("ShiftLeft") || this.heldKeys.has("ShiftRight");
   }
 
   /** 讀取「這一幀是否觸發互動」，讀取後會自動重置，等同邊緣觸發。 */
@@ -78,9 +89,19 @@ export class InputManager {
     return this.consumeAction("toggleAutomaton");
   }
 
-  /** 讀取「這一幀是否按了 Esc」，讀取後會自動重置。 */
-  consumeCloseAutomaton(): boolean {
-    return this.consumeAction("closeAutomaton");
+  /** 讀取「這一幀是否按了 Esc」（關閉視窗 / 取消選單），讀取後會自動重置。 */
+  consumeCancel(): boolean {
+    return this.consumeAction("cancel");
+  }
+
+  /** 取出最早一次「按下方向鍵」的事件（不是按住狀態），沒有則回傳 null。 */
+  consumeDirectionPress(): Direction | null {
+    return this.queuedDirections.shift() ?? null;
+  }
+
+  /** 丟掉還沒處理的一次性方向鍵事件，避免關掉選單後殘留的按鍵被下一個選單讀到。 */
+  clearDirectionPresses(): void {
+    this.queuedDirections.length = 0;
   }
 
   private consumeAction(action: string): boolean {

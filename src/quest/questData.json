@@ -72,5 +72,63 @@
       "visit_departmentHead",
       "submit_document"
     ]
+  },
+  {
+    "id": "document-d",
+    "name": "文件 D：印申請單與成績單，任一位老師簽名",
+    "type": "nfa",
+    "source": "TODO：填入教務處 / 系辦官方公告網址與查詢日期（計畫書第 8 節資料來源與免責聲明）",
+    "states": [
+      "start",
+      "has_form",
+      "has_transcript",
+      "ready",
+      "signed_by_advisor",
+      "signed_by_club_advisor",
+      "signed_by_teacher",
+      "complete"
+    ],
+    "initialState": "start",
+    "acceptingStates": ["complete"],
+    "transitions": [
+      ["start", "print_form", ["has_form"]],
+      ["start", "print_transcript", ["has_transcript"]],
+      ["has_form", "print_transcript", ["ready"]],
+      ["has_transcript", "print_form", ["ready"]],
+      ["ready", "sign_by_advisor", ["signed_by_advisor"]],
+      ["ready", "sign_by_club_advisor", ["signed_by_club_advisor"]],
+      ["ready", "sign_by_teacher", ["signed_by_teacher"]],
+      ["signed_by_advisor", "submit_to_office", ["complete"]],
+      ["signed_by_club_advisor", "submit_to_office", ["complete"]],
+      ["signed_by_teacher", "submit_to_office", ["complete"]]
+    ],
+    "npcEvents": {
+      "printShop": "print_form",
+      "transcriptKioskAcademic": "print_transcript",
+      "transcriptKioskContinuing": "print_transcript",
+      "transcriptKioskService": "print_transcript",
+      "homeroomTeacher": { "present": "sign_by_advisor", "absent": "staff_absent" },
+      "clubAdvisor": { "present": "sign_by_club_advisor", "absent": "staff_absent" },
+      "departmentTeacher": { "present": "sign_by_teacher", "absent": "staff_absent" },
+      "department": "submit_to_office"
+    },
+    "eventLabels": {
+      "print_form": "到影印中心印申請單",
+      "print_transcript": "到成績單列印機印成績單",
+      "sign_by_advisor": "找導師簽名",
+      "sign_by_club_advisor": "找系學會指導老師簽名",
+      "sign_by_teacher": "找系上老師簽名",
+      "staff_absent": "老師不在，撲空了",
+      "submit_to_office": "送到系辦"
+    },
+    "displaySteps": [
+      "print_form",
+      "print_transcript",
+      {
+        "label": "找任一位老師簽名（導師、系學會指導老師、系上老師擇一）",
+        "anyOf": ["sign_by_advisor", "sign_by_club_advisor", "sign_by_teacher"]
+      },
+      "submit_to_office"
+    ]
   }
 ]

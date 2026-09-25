@@ -16,7 +16,7 @@ describe("Verifier + 文件 A（DFA，固定順序流程）", () => {
 
   it("依序完成合法流程 => ACCEPT", () => {
     const verifier = new Verifier(buildAutomatonForQuest(documentA));
-    for (const event of documentA.displaySteps) {
+    for (const event of documentA.displaySteps as string[]) {
       const outcome = verifier.handleEvent(event);
       expect(outcome.isValid).toBe(true);
     }
@@ -127,5 +127,53 @@ describe("Verifier + 文件 B（NFA → DFA，系辦與系主任順序不限）"
 
     expect(outcome.isValid).toBe(false);
     expect(verifier.isAccepted()).toBe(false);
+  });
+});
+
+describe("Verifier + 文件 D（印申請單與成績單、任一位老師簽名）", () => {
+  const documentD = getQuest("document-d");
+
+  const run = (events: string[]) => {
+    const verifier = new Verifier(buildAutomatonForQuest(documentD));
+    const outcomes = events.map((event) => verifier.handleEvent(event));
+    return { verifier, outcomes };
+  };
+
+  it("先印申請單再印成績單，找任一位老師簽名，送系辦 => ACCEPT", () => {
+    for (const sign of ["sign_by_advisor", "sign_by_club_advisor", "sign_by_teacher"]) {
+      const { verifier, outcomes } = run(["print_form", "print_transcript", sign, "submit_to_office"]);
+      expect(outcomes.every((o) => o.isValid), sign).toBe(true);
+      expect(verifier.isAccepted(), sign).toBe(true);
+    }
+  });
+
+  it("申請單與成績單的列印順序不限", () => {
+    const { verifier } = run(["print_transcript", "print_form", "sign_by_teacher", "submit_to_office"]);
+    expect(verifier.isAccepted()).toBe(true);
+  });
+
+  it("還沒印齊兩份文件就找老師簽名 => REJECT", () => {
+    const { outcomes } = run(["print_form", "sign_by_advisor"]);
+    expect(outcomes[1].isValid).toBe(false);
+  });
+
+  it("同一份文件印兩次（沒有對應 transition）=> REJECT", () => {
+    const { outcomes } = run(["print_transcript", "print_transcript"]);
+    expect(outcomes[1].isValid).toBe(false);
+  });
+
+  it("簽完名後又找另一位老師簽 => REJECT（只需要一位）", () => {
+    const { outcomes } = run(["print_form", "print_transcript", "sign_by_advisor", "sign_by_teacher"]);
+    expect(outcomes[3].isValid).toBe(false);
+  });
+
+  it("NFA → DFA 之後，三位老師簽名會各自留下一個狀態（計畫書 13B 節 Minimization 要合併的就是這三個）", () => {
+    const dfa = buildAutomatonForQuest(documentD);
+    const verifierStates = ["sign_by_advisor", "sign_by_club_advisor", "sign_by_teacher"].map((sign) => {
+      const verifier = new Verifier(dfa);
+      for (const event of ["print_form", "print_transcript", sign]) verifier.handleEvent(event);
+      return verifier.getCurrentState();
+    });
+    expect(new Set(verifierStates).size).toBe(3);
   });
 });

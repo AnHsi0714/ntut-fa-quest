@@ -19,10 +19,15 @@ export class Camera {
     let x = targetPixelX + TILE_SIZE / 2 - viewportWidth / 2;
     let y = targetPixelY + TILE_SIZE / 2 - viewportHeight / 2;
 
-    const maxX = Math.max(0, mapPixelWidth - viewportWidth);
-    const maxY = Math.max(0, mapPixelHeight - viewportHeight);
-    x = clamp(x, 0, maxX);
-    y = clamp(y, 0, maxY);
+    // 地圖比畫面小（例如只有兩間房的光華館）時置中顯示，否則跟著玩家、但不超出地圖邊界。
+    x =
+      mapPixelWidth < viewportWidth
+        ? (mapPixelWidth - viewportWidth) / 2
+        : clamp(x, 0, mapPixelWidth - viewportWidth);
+    y =
+      mapPixelHeight < viewportHeight
+        ? (mapPixelHeight - viewportHeight) / 2
+        : clamp(y, 0, mapPixelHeight - viewportHeight);
 
     this.x = x;
     this.y = y;

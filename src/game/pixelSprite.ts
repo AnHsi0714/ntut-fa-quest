@@ -115,6 +115,24 @@ function renderFrame(
 
 export type CharacterSpriteSet = Record<Direction, [HTMLCanvasElement, HTMLCanvasElement]>;
 
+/** 成績單列印機（不是人）：不論朝哪個方向都是同一張圖。 */
+export function buildKioskSpriteSet(): CharacterSpriteSet {
+  const canvas = document.createElement("canvas");
+  canvas.width = SPRITE_SIZE;
+  canvas.height = SPRITE_SIZE;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("2D context 不可用");
+  rect(ctx, 3, 1, 10, 14, "#2f3a4f");
+  rect(ctx, 4, 2, 8, 5, "#8fd3ff");
+  rect(ctx, 5, 3, 3, 1, "#e8f6ff");
+  rect(ctx, 4, 8, 8, 1, "#1c1c1c");
+  rect(ctx, 5, 9, 6, 3, "#f5f5f5");
+  rect(ctx, 11, 12, 1, 1, "#7ee07e");
+  rect(ctx, 3, 15, 10, 1, "#1c1c1c");
+  const frames: [HTMLCanvasElement, HTMLCanvasElement] = [canvas, canvas];
+  return { down: frames, up: frames, left: frames, right: frames };
+}
+
 /** 預先把 4 個方向 x 2 個走路幀都畫好並快取，避免每一格畫面都重新算像素。 */
 export function buildCharacterSpriteSet(palette: CharacterPalette): CharacterSpriteSet {
   const directions: Direction[] = ["down", "up", "left", "right"];
@@ -168,6 +186,118 @@ export const NPC_PALETTES: Record<string, CharacterPalette> = {
     shirt: "#c99a2e",
     pants: "#3a3a3a",
     shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  cafeteria: {
+    skin: "#f0c09a",
+    hair: "#f5f5f5",
+    shirt: "#e8e8e8",
+    pants: "#3a4a6a",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  guard: {
+    skin: "#e9b48a",
+    hair: "#1f2a44",
+    shirt: "#2f4f7f",
+    pants: "#1f2a44",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  desk: {
+    skin: "#f2c19c",
+    hair: "#3a2415",
+    shirt: "#2e7d6b",
+    pants: "#3a3a3a",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  senior: {
+    skin: "#f0bd94",
+    hair: "#1c1c1c",
+    shirt: "#3a3a3a",
+    pants: "#2b3f66",
+    shoes: "#e8e8e8",
+    outline: "#1c1c1c",
+  },
+  homeroom: {
+    skin: "#f0bd94",
+    hair: "#3a2415",
+    shirt: "#3f6fb0",
+    pants: "#3a3a3a",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  clubAdvisor: {
+    skin: "#e9b48a",
+    hair: "#6b6b6b",
+    shirt: "#b0503f",
+    pants: "#2b2b2b",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  teacher: {
+    skin: "#f2c19c",
+    hair: "#1c1c1c",
+    shirt: "#4f8a6b",
+    pants: "#3a3a3a",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  printShop: {
+    skin: "#e9b48a",
+    hair: "#5a3b24",
+    shirt: "#7a8a99",
+    pants: "#3a3a3a",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  ta: {
+    skin: "#f2c19c",
+    hair: "#2b2b2b",
+    shirt: "#c46a9a",
+    pants: "#3a3a3a",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  gradA: {
+    skin: "#f0bd94",
+    hair: "#1c1c1c",
+    shirt: "#f5f5f5",
+    pants: "#2b3f66",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  gradB: {
+    skin: "#e9b48a",
+    hair: "#4a2f1c",
+    shirt: "#6b8e4e",
+    pants: "#3a3a3a",
+    shoes: "#e8e8e8",
+    outline: "#1c1c1c",
+  },
+  studentA: {
+    skin: "#f2c19c",
+    hair: "#6b3a1f",
+    shirt: "#d9534f",
+    pants: "#2b3f66",
+    shoes: "#e8e8e8",
+    outline: "#1c1c1c",
+  },
+  studentB: {
+    skin: "#e9b48a",
+    hair: "#1c1c1c",
+    shirt: "#4f8fd9",
+    pants: "#3a3a3a",
+    shoes: "#1c1c1c",
+    outline: "#1c1c1c",
+  },
+  studentC: {
+    skin: "#f0bd94",
+    hair: "#8a5a2b",
+    shirt: "#e0b33a",
+    pants: "#4a3b2a",
+    shoes: "#e8e8e8",
     outline: "#1c1c1c",
   },
 };

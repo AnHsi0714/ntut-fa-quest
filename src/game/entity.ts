@@ -2,10 +2,8 @@ import type { CharacterSpriteSet, Direction } from "./pixelSprite";
 import { TILE_SIZE } from "./tileArt";
 import type { Camera } from "./camera";
 
-/** 從一格移動到下一格所花費的時間（毫秒），數值越小走路越快。 */
-const MOVE_DURATION_MS = 160;
-/** 走路動畫兩幀切換的間隔（毫秒）。 */
-const WALK_FRAME_INTERVAL_MS = MOVE_DURATION_MS / 2;
+/** 玩家從一格移動到下一格所花費的時間（毫秒），數值越小走路越快。 */
+export const PLAYER_MOVE_DURATION_MS = 160;
 
 const DIRECTION_DELTA: Record<Direction, { dx: number; dy: number }> = {
   up: { dx: 0, dy: -1 },
@@ -26,6 +24,8 @@ export class Entity {
   pixelY: number;
   direction: Direction = "down";
   isMoving = false;
+  /** 走一格要花的時間（毫秒）；NPC 可以設得比玩家慢，讓玩家追得上。 */
+  moveDurationMs = PLAYER_MOVE_DURATION_MS;
 
   private moveElapsedMs = 0;
   private moveFromX = 0;
@@ -68,6 +68,25 @@ export class Entity {
     return true;
   }
 
+  /** 直接瞬移到指定格子（換區域、換樓層、被送回校門口時使用），會中斷正在進行的移動。 */
+  placeAt(tileX: number, tileY: number, direction: Direction): void {
+    this.tileX = tileX;
+    this.tileY = tileY;
+    this.pixelX = tileX * TILE_SIZE;
+    this.pixelY = tileY * TILE_SIZE;
+    this.direction = direction;
+    this.isMoving = false;
+    this.moveElapsedMs = 0;
+    this.frameIndex = 0;
+    this.frameElapsedMs = 0;
+  }
+
+  /** 這個角色目前佔用的格子：站著時是一格；走路途中同時佔著出發格和目的格，碰到哪一格都算碰到他。 */
+  occupies(x: number, y: number): boolean {
+    if (this.tileX === x && this.tileY === y) return true;
+    return this.isMoving && this.moveFromX === x && this.moveFromY === y;
+  }
+
   /** 面向目標格但不實際移動（例如互動前先轉向）。 */
   faceTowards(direction: Direction): void {
     if (!this.isMoving) {
@@ -78,12 +97,13 @@ export class Entity {
   update(deltaMs: number): void {
     if (this.isMoving) {
       this.moveElapsedMs += deltaMs;
-      const t = Math.min(1, this.moveElapsedMs / MOVE_DURATION_MS);
+      const t = Math.min(1, this.moveElapsedMs / this.moveDurationMs);
       this.pixelX = lerp(this.moveFromX * TILE_SIZE, this.tileX * TILE_SIZE, t);
       this.pixelY = lerp(this.moveFromY * TILE_SIZE, this.tileY * TILE_SIZE, t);
 
       this.frameElapsedMs += deltaMs;
-      if (this.frameElapsedMs >= WALK_FRAME_INTERVAL_MS) {
+      // 走路動畫每走半格切換一次腳步
+      if (this.frameElapsedMs >= this.moveDurationMs / 2) {
         this.frameElapsedMs = 0;
         this.frameIndex = this.frameIndex === 0 ? 1 : 0;
       }
