@@ -70,8 +70,12 @@ export interface BuildingSpec {
   /** 地下有幾層，沒有地下室就不填。 */
   basementCount?: number;
   layout: BuildingLayout;
-  /** 走出 1F 大門後，玩家出現在戶外地圖的位置（通常是門口正下方）。 */
-  outdoorExit: { areaId: string; x: number; y: number };
+  /**
+   * 走出 1F 大門後，玩家出現在戶外地圖的位置與面向。絕大部分建築物大門開在南側，
+   * 出來後會站在門口正下方、面向下（direction: "down"）；先鋒大樓的門開在北側
+   * （面向忠孝東路對面的正校門），出來後就要站在門口正上方、面向上（"up"）。
+   */
+  outdoorExit: { areaId: string; x: number; y: number; direction: Direction };
 }
 
 const ROOM_W = 4;
@@ -236,7 +240,8 @@ function buildStripFloor(layout: Extract<BuildingLayout, { type: "strip" }>, flo
     anchors: {
       stairs,
       elevatorArrival: { x: coreX + 1, y: 7, direction: "down" },
-      entranceArrival: { x: coreX + 1, y: 13, direction: "up" },
+      // 跟 exit（y=14）隔一格，不然一進門按一下「往出口方向」的方向鍵就會立刻被彈回門外。
+      entranceArrival: { x: coreX + 1, y: 12, direction: "up" },
       infoDesk: { x: coreX + 2, y: 11, direction: "left" },
     },
   };
@@ -336,7 +341,8 @@ function buildRingFloor(layout: Extract<BuildingLayout, { type: "ring" }>, floor
     anchors: {
       stairs,
       elevatorArrival: { x: coreX + 1, y: northCorridor, direction: "down" },
-      entranceArrival: { x: coreX + 1, y: southRoomTop + 3, direction: "up" },
+      // 跟 exit（height - 1）隔一格，不然一進門按一下「往出口方向」的方向鍵就會立刻被彈回門外。
+      entranceArrival: { x: coreX + 1, y: southRoomTop + 2, direction: "up" },
       infoDesk: { x: coreX + 3, y: southRoomTop + 1, direction: "left" },
     },
   };
@@ -359,7 +365,7 @@ export function buildFloorArea(spec: BuildingSpec, floor: number): Area {
       toAreaId: spec.outdoorExit.areaId,
       toX: spec.outdoorExit.x,
       toY: spec.outdoorExit.y,
-      direction: "down",
+      direction: spec.outdoorExit.direction,
     });
     canvas.labels.push({ text: "出口", x: built.exit.x, y: built.exit.y - 1 });
   }

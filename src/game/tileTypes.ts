@@ -19,6 +19,8 @@ export enum TileType {
   Border = "border",
   /** 校外馬路（忠孝東路、新生南路、建國南路），只是背景，不能走上去。 */
   Road = "road",
+  /** 忠孝東路上的人行穿越道，讓玩家可以從正校門過馬路走到對面的先鋒大樓。 */
+  Crosswalk = "crosswalk",
   /** 校門口的地面，可以走。 */
   Gate = "gate",
   /** 建築物內部：地板、牆壁、樓梯、電梯、出口。 */
@@ -46,6 +48,7 @@ export function isTileWalkable(tile: TileType): boolean {
     case TileType.Floor:
     case TileType.Exit:
     case TileType.Courtyard:
+    case TileType.Crosswalk:
       return true;
     case TileType.Wall:
     case TileType.WallRedBrick:
