@@ -12,6 +12,7 @@ import {
   type Warp,
 } from "./area";
 import type { Direction } from "./pixelSprite";
+import { rowsToTiles, type FloorOverride } from "./floorOverride";
 
 /**
  * 建築物內部的樓層產生器。每棟建築物依實際結構選一種平面：
@@ -364,53 +365,92 @@ function buildRingFloor(layout: Extract<BuildingLayout, { type: "ring" }>, floor
   };
 }
 
-/** 依照這棟的結構，產生某一層的 Area。 */
-export function buildFloorArea(spec: BuildingSpec, floor: number): Area {
-  const built =
-    spec.layout.type === "strip" ? buildStripFloor(spec.layout, floor) : buildRingFloor(spec.layout, floor);
-  const { canvas, anchors } = built;
-
-  const warps: Warp[] = [];
-  if (floor === 1) {
-    for (const bench of built.benches) canvas.set(bench.x, bench.y, TileType.Bench);
-    canvas.labels.push({ text: "休息區", x: built.benches[0].x, y: built.benches[0].y });
-    canvas.set(built.exit.x, built.exit.y, TileType.Exit);
-    warps.push({
-      x: built.exit.x,
-      y: built.exit.y,
+/** 1F 出口與後方通道的傳送點（自動產生與手畫的樓層共用）。 */
+function floorWarps(
+  spec: BuildingSpec,
+  exit: { x: number; y: number },
+  passageExit: { x: number; y: number } | undefined
+): Warp[] {
+  const warps: Warp[] = [
+    {
+      x: exit.x,
+      y: exit.y,
       toAreaId: spec.exitTo.areaId,
       toX: spec.exitTo.x,
       toY: spec.exitTo.y,
       direction: spec.exitTo.direction,
-    });
-    const exitText = spec.exitTo.name ? `往${spec.exitTo.name}` : "出口";
-    canvas.labels.push({ text: exitText, x: built.exit.x, y: built.exit.y - 1 });
-
-    if (spec.backPassage) {
-      if (spec.layout.type !== "strip") throw new Error(`${spec.name}：只有長條型建築可以開後方通道`);
-      const { exit } = stripBackPassage(spec.layout);
-      canvas.fill(exit.x, exit.y + 1, exit.x, 6, TileType.Floor);
-      canvas.set(exit.x, exit.y, TileType.Exit);
-      const { to } = spec.backPassage;
-      warps.push({ x: exit.x, y: exit.y, toAreaId: to.areaId, toX: to.x, toY: to.y, direction: to.direction });
-      canvas.labels.push({ text: `往${spec.backPassage.name}`, x: exit.x, y: exit.y + 2 });
-    }
+    },
+  ];
+  if (spec.backPassage && passageExit) {
+    const { to } = spec.backPassage;
+    warps.push({ x: passageExit.x, y: passageExit.y, toAreaId: to.areaId, toX: to.x, toY: to.y, direction: to.direction });
   }
+  return warps;
+}
 
+function areaInfo(spec: BuildingSpec, floor: number, anchors: BuildingAnchors) {
   return {
     id: floorAreaId(spec.id, floor),
     name: `${spec.name} ${floorLabel(floor)}`,
+    building: { buildingId: spec.id, buildingName: spec.name, floor, floors: buildingFloors(spec), anchors },
+  };
+}
+
+/** 手畫的樓層（見 floorOverride.ts）：圖塊、房間、標籤、固定位置都照 JSON，傳送點照這棟的設定接上。 */
+function buildOverrideArea(spec: BuildingSpec, floor: number, override: FloorOverride): Area {
+  const grid = rowsToTiles(override);
+  let warps: Warp[] = [];
+  if (floor === 1) {
+    if (!override.exit) throw new Error(`${override.areaId}：1F 要標出口位置`);
+    if (spec.backPassage && !override.backPassage) throw new Error(`${override.areaId}：這層要標後方通道`);
+    warps = floorWarps(spec, override.exit, override.backPassage?.exit);
+    for (const warp of warps) {
+      if (grid[warp.y]?.[warp.x] !== TileType.Exit) {
+        throw new Error(`${override.areaId}：(${warp.x}, ${warp.y}) 標成出口，但那一格不是出口圖塊`);
+      }
+    }
+  }
+  return {
+    ...areaInfo(spec, floor, override.anchors),
+    map: new GameMap(override.width, override.height, grid, TileType.InteriorWall),
+    warps,
+    labels: override.labels,
+    rooms: override.rooms,
+  };
+}
+
+/** 依照這棟的結構，產生某一層的 Area；有手畫版（override）就用手畫版。 */
+export function buildFloorArea(spec: BuildingSpec, floor: number, override?: FloorOverride): Area {
+  if (override) return buildOverrideArea(spec, floor, override);
+  const built =
+    spec.layout.type === "strip" ? buildStripFloor(spec.layout, floor) : buildRingFloor(spec.layout, floor);
+  const { canvas, anchors } = built;
+
+  let warps: Warp[] = [];
+  if (floor === 1) {
+    for (const bench of built.benches) canvas.set(bench.x, bench.y, TileType.Bench);
+    canvas.labels.push({ text: "休息區", x: built.benches[0].x, y: built.benches[0].y });
+    canvas.set(built.exit.x, built.exit.y, TileType.Exit);
+    const exitText = spec.exitTo.name ? `往${spec.exitTo.name}` : "出口";
+    canvas.labels.push({ text: exitText, x: built.exit.x, y: built.exit.y - 1 });
+
+    let passageExit: { x: number; y: number } | undefined;
+    if (spec.backPassage) {
+      if (spec.layout.type !== "strip") throw new Error(`${spec.name}：只有長條型建築可以開後方通道`);
+      passageExit = stripBackPassage(spec.layout).exit;
+      canvas.fill(passageExit.x, passageExit.y + 1, passageExit.x, 6, TileType.Floor);
+      canvas.set(passageExit.x, passageExit.y, TileType.Exit);
+      canvas.labels.push({ text: `往${spec.backPassage.name}`, x: passageExit.x, y: passageExit.y + 2 });
+    }
+    warps = floorWarps(spec, built.exit, passageExit);
+  }
+
+  return {
+    ...areaInfo(spec, floor, anchors),
     map: new GameMap(canvas.width, canvas.height, canvas.grid, TileType.InteriorWall),
     warps,
     labels: canvas.labels,
     rooms: canvas.rooms,
-    building: {
-      buildingId: spec.id,
-      buildingName: spec.name,
-      floor,
-      floors: buildingFloors(spec),
-      anchors,
-    },
   };
 }
 

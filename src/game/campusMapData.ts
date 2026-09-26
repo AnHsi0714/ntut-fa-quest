@@ -1,5 +1,6 @@
 import { GameMap, createGrid, fillRect, setTile } from "./map";
 import { TileType } from "./tileTypes";
+import { loadFloorOverrides, type FloorOverride } from "./floorOverride";
 import type { Direction } from "./pixelSprite";
 import type { TimePeriod } from "./timeSystem";
 import {
@@ -690,7 +691,11 @@ function buildOutdoorArea(
  * 戶外建築物 → 室內樓層的設定。areas 是已經產生好的樓層：前面那棟（六教）的後方通道
  * 要通到後面那棟（科研大樓）的 1F，所以後面那棟要排在 BUILDINGS 前面、先產生。
  */
-function toBuildingSpec(building: OutdoorBuilding, areas: Map<string, Area>): BuildingSpec | undefined {
+function toBuildingSpec(
+  building: OutdoorBuilding,
+  areas: Map<string, Area>,
+  overrides: Map<string, FloorOverride>
+): BuildingSpec | undefined {
   if (!building.interior) return undefined;
   const front = BUILDINGS.find((candidate) => candidate.backPassageTo === building.id);
 
@@ -698,8 +703,11 @@ function toBuildingSpec(building: OutdoorBuilding, areas: Map<string, Area>): Bu
   if (front) {
     // 沒有自己的大門：1F 出口通回前面那棟 1F 的後方通道
     if (front.interior?.layout.type !== "strip") throw new Error(`${front.name} 不是長條型，不能開後方通道`);
-    const { arrival } = stripBackPassage(front.interior.layout);
-    exitTo = { areaId: floorAreaId(front.id, 1), ...arrival, name: front.name };
+    const frontLobbyId = floorAreaId(front.id, 1);
+    // 前面那棟的 1F 是手畫的話，通道位置照手畫版
+    const handDrawn = overrides.get(frontLobbyId)?.backPassage;
+    const { arrival } = handDrawn ?? stripBackPassage(front.interior.layout);
+    exitTo = { areaId: frontLobbyId, ...arrival, name: front.name };
   } else if (building.door) {
     const north = building.entranceSide === "north";
     exitTo = {
@@ -1168,17 +1176,24 @@ function buildInfoDeskNpc(spec: BuildingSpec, w: WorldLookup): NpcSpawn {
  * 校園世界，對應計畫書第 6 節：戶外校園地圖（依北科大校園地圖配置），加上可以進入的建築物各樓層。
  * 行政流程相關的單位都放在建築物裡的實際樓層，玩家要自己爬樓梯或搭電梯過去。
  */
-export function buildCampusWorld(): { areas: Map<string, Area>; npcSpawns: NpcSpawn[] } {
+export function buildCampusWorld(
+  overrides: Map<string, FloorOverride> = loadFloorOverrides()
+): { areas: Map<string, Area>; npcSpawns: NpcSpawn[] } {
   const areas = new Map<string, Area>();
   const specs: BuildingSpec[] = [];
   for (const building of BUILDINGS) {
-    const spec = toBuildingSpec(building, areas);
+    const spec = toBuildingSpec(building, areas, overrides);
     if (!spec) continue;
     specs.push(spec);
     for (const floor of buildingFloors(spec)) {
-      const area = buildFloorArea(spec, floor);
+      const id = floorAreaId(spec.id, floor);
+      const area = buildFloorArea(spec, floor, overrides.get(id));
       areas.set(area.id, area);
     }
+  }
+
+  for (const id of overrides.keys()) {
+    if (!areas.has(id)) throw new Error(`手畫樓層 ${id}.json 對不到任何建築物樓層（檔名打錯了？）`);
   }
 
   const lookup = new WorldLookup(areas);
