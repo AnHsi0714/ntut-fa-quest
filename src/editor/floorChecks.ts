@@ -99,6 +99,8 @@ export interface CheckContext {
   expectedStairs: number;
   isGroundFloor: boolean;
   needsBackPassage: boolean;
+  /** 戶外這棟有幾扇側門（1F 要標一樣多個側門出口）。 */
+  sideExitCount: number;
   /** 原本這層有名稱的房間；NPC 用房間名稱找位置，少了會找不到人。 */
   originalRoomNames: string[];
 }
@@ -155,6 +157,18 @@ export function checkFloor(override: FloorOverride, grid: TileType[][], context:
       grid.some((row) => row.includes(TileType.Bench)),
       "大廳有休息區沙發"
     );
+    const sideExits = override.sideExits ?? [];
+    add(
+      sideExits.length === context.sideExitCount,
+      `側門出口 ${sideExits.length} 個（戶外這棟有 ${context.sideExitCount} 扇側門，數量跟順序要對上）`
+    );
+    sideExits.forEach((side, index) => {
+      const label = `第 ${index + 1} 個側門`;
+      add(tileAt(grid, side.exit.x, side.exit.y) === TileType.Exit, `${label}出口 ${at(side.exit)}：是出口圖塊`);
+      add(walkable(grid, side.arrival.x, side.arrival.y), `${label}抵達點 ${at(side.arrival)}：站得上去`);
+      const distance = Math.abs(side.exit.x - side.arrival.x) + Math.abs(side.exit.y - side.arrival.y);
+      add(distance > 1, `${label}抵達點跟出口至少隔一格`);
+    });
   }
   if (context.needsBackPassage) {
     const passage = override.backPassage;
@@ -177,6 +191,11 @@ export function checkFloor(override: FloorOverride, grid: TileType[][], context:
     ];
     if (context.isGroundFloor) spots.push(["入口抵達點", anchors.entranceArrival]);
     if (context.isGroundFloor && override.exit) spots.push(["出口", override.exit]);
+    if (context.isGroundFloor) {
+      (override.sideExits ?? []).forEach((side, index) => {
+        spots.push([`第 ${index + 1} 個側門出口`, side.exit], [`第 ${index + 1} 個側門抵達點`, side.arrival]);
+      });
+    }
     for (const room of override.rooms) spots.push([`房間「${room.name ?? "未命名"}」門口`, { x: room.doorX, y: room.doorY }]);
     const unreachable = spots.filter(([, spot]) => !reachable.has(`${spot.x},${spot.y}`)).map(([name]) => name);
     add(unreachable.length === 0, unreachable.length === 0 ? "從第 1 座樓梯走得到所有標記與房門" : `走不到：${unreachable.join("、")}`);

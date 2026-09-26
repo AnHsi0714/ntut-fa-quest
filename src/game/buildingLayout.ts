@@ -82,6 +82,8 @@ export interface BuildingSpec {
    * to 是進到那棟之後玩家出現的位置。
    */
   backPassage?: { name: string; to: { areaId: string; x: number; y: number; direction: Direction } };
+  /** 側門：走出 1F 各個側門出口後玩家出現的位置，順序對到手畫 1F 的 sideExits。只有手畫的 1F 能開側門。 */
+  sideExitTo?: Array<{ areaId: string; x: number; y: number; direction: Direction }>;
 }
 
 const ROOM_W = 4;
@@ -365,11 +367,12 @@ function buildRingFloor(layout: Extract<BuildingLayout, { type: "ring" }>, floor
   };
 }
 
-/** 1F 出口與後方通道的傳送點（自動產生與手畫的樓層共用）。 */
+/** 1F 的傳送點，依序是正門出口、後方通道、各個側門出口（自動產生與手畫的樓層共用）。 */
 function floorWarps(
   spec: BuildingSpec,
   exit: { x: number; y: number },
-  passageExit: { x: number; y: number } | undefined
+  passageExit: { x: number; y: number } | undefined,
+  sideExits: Array<{ x: number; y: number }> = []
 ): Warp[] {
   const warps: Warp[] = [
     {
@@ -385,14 +388,18 @@ function floorWarps(
     const { to } = spec.backPassage;
     warps.push({ x: passageExit.x, y: passageExit.y, toAreaId: to.areaId, toX: to.x, toY: to.y, direction: to.direction });
   }
+  sideExits.forEach((sideExit, index) => {
+    const to = spec.sideExitTo![index];
+    warps.push({ x: sideExit.x, y: sideExit.y, toAreaId: to.areaId, toX: to.x, toY: to.y, direction: to.direction });
+  });
   return warps;
 }
 
-function areaInfo(spec: BuildingSpec, floor: number, anchors: BuildingAnchors) {
+function areaInfo(spec: BuildingSpec, floor: number, anchors: BuildingAnchors, sideEntrances: TileSpot[] = []) {
   return {
     id: floorAreaId(spec.id, floor),
     name: `${spec.name} ${floorLabel(floor)}`,
-    building: { buildingId: spec.id, buildingName: spec.name, floor, floors: buildingFloors(spec), anchors },
+    building: { buildingId: spec.id, buildingName: spec.name, floor, floors: buildingFloors(spec), anchors, sideEntrances },
   };
 }
 
@@ -400,10 +407,20 @@ function areaInfo(spec: BuildingSpec, floor: number, anchors: BuildingAnchors) {
 function buildOverrideArea(spec: BuildingSpec, floor: number, override: FloorOverride): Area {
   const grid = rowsToTiles(override);
   let warps: Warp[] = [];
+  const sideExits = floor === 1 ? (override.sideExits ?? []) : [];
   if (floor === 1) {
     if (!override.exit) throw new Error(`${override.areaId}：1F 要標出口位置`);
     if (spec.backPassage && !override.backPassage) throw new Error(`${override.areaId}：這層要標後方通道`);
-    warps = floorWarps(spec, override.exit, override.backPassage?.exit);
+    const expected = spec.sideExitTo?.length ?? 0;
+    if (sideExits.length !== expected) {
+      throw new Error(`${override.areaId}：戶外有 ${expected} 扇側門，1F 標了 ${sideExits.length} 個側門出口`);
+    }
+    warps = floorWarps(
+      spec,
+      override.exit,
+      override.backPassage?.exit,
+      sideExits.map((side) => side.exit)
+    );
     for (const warp of warps) {
       if (grid[warp.y]?.[warp.x] !== TileType.Exit) {
         throw new Error(`${override.areaId}：(${warp.x}, ${warp.y}) 標成出口，但那一格不是出口圖塊`);
@@ -411,7 +428,12 @@ function buildOverrideArea(spec: BuildingSpec, floor: number, override: FloorOve
     }
   }
   return {
-    ...areaInfo(spec, floor, override.anchors),
+    ...areaInfo(
+      spec,
+      floor,
+      override.anchors,
+      sideExits.map((side) => side.arrival)
+    ),
     map: new GameMap(override.width, override.height, grid, TileType.InteriorWall),
     warps,
     labels: override.labels,
@@ -422,6 +444,7 @@ function buildOverrideArea(spec: BuildingSpec, floor: number, override: FloorOve
 /** 依照這棟的結構，產生某一層的 Area；有手畫版（override）就用手畫版。 */
 export function buildFloorArea(spec: BuildingSpec, floor: number, override?: FloorOverride): Area {
   if (override) return buildOverrideArea(spec, floor, override);
+  if (floor === 1 && spec.sideExitTo?.length) throw new Error(`${spec.name} 有側門，1F 要用手畫版標出側門出口`);
   const built =
     spec.layout.type === "strip" ? buildStripFloor(spec.layout, floor) : buildRingFloor(spec.layout, floor);
   const { canvas, anchors } = built;

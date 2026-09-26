@@ -22,6 +22,11 @@ export interface FloorOverride {
   exit?: { x: number; y: number };
   /** 有後方通道的樓層才有（六教 1F）：通道出口的位置，以及從後面那棟走過來時玩家出現的位置。 */
   backPassage?: { exit: { x: number; y: number }; arrival: TileSpot };
+  /**
+   * 1F 才有：側門。每個側門有自己的出口（那一格要是出口圖塊）與從那扇門進來時站的位置，
+   * 順序對到戶外這棟的第 2、3……扇門，數量要跟戶外的側門一樣。
+   */
+  sideExits?: Array<{ exit: { x: number; y: number }; arrival: TileSpot }>;
 }
 
 /** 圖塊 ↔ JSON 裡的字元。新增圖塊時要在這裡補一個沒用過的字元。 */
@@ -109,8 +114,17 @@ export function areaToOverride(area: Area, areas: Map<string, Area>): FloorOverr
     labels: structuredClone(area.labels),
     anchors: structuredClone(area.building.anchors),
   };
-  const [exit, passage] = area.warps;
+  // 1F 的傳送點依序是：正門出口、後方通道（六教才有）、各個側門出口
+  const { sideEntrances } = area.building;
+  const sideWarps = area.warps.slice(area.warps.length - sideEntrances.length);
+  const [exit, passage] = area.warps.slice(0, area.warps.length - sideEntrances.length);
   if (exit) override.exit = { x: exit.x, y: exit.y };
+  if (sideWarps.length > 0) {
+    override.sideExits = sideWarps.map((warp, index) => ({
+      exit: { x: warp.x, y: warp.y },
+      arrival: structuredClone(sideEntrances[index]),
+    }));
+  }
   if (passage) {
     const comingBack = [...areas.values()]
       .filter((other) => other.building && other.id !== area.id)

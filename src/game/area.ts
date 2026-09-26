@@ -57,6 +57,8 @@ export interface BuildingFloorInfo {
   floors: number[];
   /** 這棟的固定位置（每層共用同一套結構，所以換樓層後位置不變）。 */
   anchors: BuildingAnchors;
+  /** 1F 才有：從側門進來時站的位置，順序對到戶外這棟的第 2、3……扇門（第 1 扇正門用 anchors.entranceArrival）。 */
+  sideEntrances: TileSpot[];
 }
 
 /** 一座樓梯：佔的格子，以及從別層走這座樓梯上來 / 下來時，玩家出現的位置。 */
