@@ -21,6 +21,11 @@ import { LabelOverlay, tileLabelAnchor, type OverlayLabel } from "./labelOverlay
 import { TimeSystem, formatClock } from "./timeSystem";
 import { StaminaSystem } from "./staminaSystem";
 import {
+  ADVANCE_TIME_STAMINA_COST,
+  PROBE_ABSENT_NPC_STAMINA_COST,
+  REST_TASK_MINUTES,
+} from "./pacing";
+import {
   VERTICAL_MODE_LABELS,
   computeVerticalTravelCost,
   floorsBetween,
@@ -57,11 +62,8 @@ const MOVE_STAMINA_COST = 0.25;
  */
 const RUN_STAMINA_COST = 0.75;
 const RUN_MOVE_DURATION_MS = 70;
-const ADVANCE_TIME_STAMINA_COST = 15;
-const PROBE_ABSENT_NPC_STAMINA_COST = 5;
 
-/** 臨時任務（體力耗盡去吃飯休息）與餐廳用餐花掉的時間（分鐘）。 */
-const REST_TASK_MINUTES = 60;
+/** 餐廳用餐花掉的時間（分鐘）。跳轉時段、碰運氣與臨時任務的成本見 pacing.ts。 */
 const MEAL_MINUTES = 30;
 /** 1F 大廳休息區：坐一下補一部分體力。 */
 const BENCH_REST_MINUTES = 15;
