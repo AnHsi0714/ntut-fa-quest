@@ -104,6 +104,36 @@ function drawCrosswalk(ctx: CanvasRenderingContext2D): void {
   ctx.fillRect(0, 13, TILE_SIZE, 3);
 }
 
+/** 東西向的人行穿越道（建國南路）：斑馬線是直的。 */
+function drawCrosswalkVertical(ctx: CanvasRenderingContext2D): void {
+  fillBase(ctx, "#4a4a52");
+  ctx.fillStyle = "#e6e2d3";
+  ctx.fillRect(1, 0, 3, TILE_SIZE);
+  ctx.fillRect(7, 0, 3, TILE_SIZE);
+  ctx.fillRect(13, 0, 3, TILE_SIZE);
+}
+
+/** 球場：PU 地面加一點雜點，球場名稱由標籤標示。 */
+function drawCourt(ctx: CanvasRenderingContext2D): void {
+  fillBase(ctx, "#3d7a8c");
+  for (let y = 0; y < TILE_SIZE; y++) {
+    for (let x = 0; x < TILE_SIZE; x++) {
+      if (hash(x + 130, y + 130) > 0.93) {
+        ctx.fillStyle = "#468a9d";
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+  }
+}
+
+/** 運動場跑道：紅色 PU 加上分道線。 */
+function drawTrack(ctx: CanvasRenderingContext2D): void {
+  fillBase(ctx, "#b0543f");
+  ctx.fillStyle = "#c9765f";
+  ctx.fillRect(0, 5, TILE_SIZE, 1);
+  ctx.fillRect(0, 11, TILE_SIZE, 1);
+}
+
 function drawGate(ctx: CanvasRenderingContext2D): void {
   fillBase(ctx, "#c9c2b2");
   ctx.fillStyle = "#a79f8c";
@@ -290,6 +320,9 @@ const DRAWERS: Record<TileType, (ctx: CanvasRenderingContext2D) => void> = {
   [TileType.Border]: drawBorder,
   [TileType.Road]: drawRoad,
   [TileType.Crosswalk]: drawCrosswalk,
+  [TileType.CrosswalkVertical]: drawCrosswalkVertical,
+  [TileType.Court]: drawCourt,
+  [TileType.Track]: drawTrack,
   [TileType.Gate]: drawGate,
   [TileType.Floor]: drawFloor,
   [TileType.InteriorWall]: drawInteriorWall,
