@@ -205,6 +205,9 @@ function stripBuilding(
  * 房號來源：課務系統「114 學年度第 2 學期教室使用表」（排課用的教室），再加上教務處「E化教室一覽表」。
  * 表上沒有的房間（辦公室、研究室等）依樓層補上房號，所以補出來的號碼不一定是實際房號。
  * 單位位置來源見各棟的註解；標「遊戲設定」的是查不到、為了任務而安排的位置。
+ *
+ * 三教、光華館、行政大樓、一教、二教、四教、設計館的每一層都有手畫版（src/game/floorOverrides/，
+ * 依 2010 年「校園各大樓設計圖電子檔」的平面圖畫的），這幾棟的 layout 只在拿掉手畫版時才會用到。
  */
 const BUILDINGS: OutdoorBuilding[] = [
   {
@@ -458,14 +461,15 @@ const BUILDINGS: OutdoorBuilding[] = [
   },
   {
     id: "design",
-    // 設計館：教室到 7F，B1 有 B01（教室使用表）。
+    // 設計館：教室到 7F，B1 有 B01（教室使用表）。大門在北側，面向新生側門進來的道路（2010 年設計圖）。
     name: "設計館",
     material: TileType.WallWashedStone,
     x: 5,
     y: 29,
     w: 9,
     h: 3,
-    door: { x: 8, y: 31 },
+    door: { x: 11, y: 29 },
+    entranceSide: "north",
     // L 形：東南角多一塊往下突出
     parts: [{ x: 12, y: 31, w: 6, h: 2 }],
     interior: {
@@ -1166,7 +1170,7 @@ function buildInfoDeskNpc(spec: BuildingSpec, w: WorldLookup): NpcSpawn {
     direction: desk.direction,
     greeting: `歡迎來到${spec.name}。`,
     lines: [
-      `歡迎來到${spec.name}。${size}，樓梯在走廊最西邊，電梯在走廊中間。${connection}累了可以在大廳休息區坐一下。`,
+      `歡迎來到${spec.name}。${size}。${connection}累了可以在大廳休息區坐一下。`,
       directory.length > 0 ? `樓層簡介：${directory.join("；")}。` : "這棟主要是教室和研究室。",
     ],
   };

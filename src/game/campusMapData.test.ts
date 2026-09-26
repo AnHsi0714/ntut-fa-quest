@@ -6,7 +6,7 @@ import { TileType } from "./tileTypes";
 import type { GameMap } from "./map";
 import { findPath } from "./pathfinding";
 import { isNpcWalkableTile } from "./npcWalkable";
-import { areaToOverride } from "./floorOverride";
+import { areaToOverride, loadFloorOverrides, type FloorOverride } from "./floorOverride";
 
 /** 從起點出發，走得到的所有格子（上下左右、只走可走的圖塊）。 */
 function reachableFrom(map: GameMap, startX: number, startY: number): Set<string> {
@@ -445,7 +445,10 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
 
   it("手畫樓層：把現有樓層轉成 JSON 再當成手畫版套回去，結果跟原本一樣", () => {
     const ids = ["teaching3-1F", "sixth-1F", "research-1F", "research-3F"];
-    const overrides = new Map(ids.map((id) => [id, areaToOverride(areas.get(id)!, areas)]));
+    const overrides = new Map([
+      ...loadFloorOverrides(),
+      ...ids.map((id): [string, FloorOverride] => [id, areaToOverride(areas.get(id)!, areas)]),
+    ]);
     const rebuilt = buildCampusWorld(overrides);
     for (const id of ids) {
       const before = areas.get(id)!;
