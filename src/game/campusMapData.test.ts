@@ -90,25 +90,65 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
     }
   });
 
-  it("只有 1F 有出口，而且出口會回到戶外地圖", () => {
+  it("只有 1F 有出口，而且出口會回到戶外地圖（科研大樓例外，出口通到六教 1F）", () => {
     for (const area of areas.values()) {
       if (!area.building) continue;
-      if (area.building.floor === 1) {
-        expect(area.warps).toHaveLength(1);
-        expect(area.warps[0].toAreaId).toBe(OUTDOOR_AREA_ID);
-      } else {
-        expect(area.warps).toHaveLength(0);
+      if (area.building.floor !== 1) {
+        expect(area.warps, area.id).toHaveLength(0);
+        continue;
       }
+      if (area.id === "sixth-1F") expect(area.warps).toHaveLength(2);
+      else expect(area.warps, area.id).toHaveLength(1);
+      expect(area.warps[0].toAreaId, area.id).toBe(area.id === "research-1F" ? "sixth-1F" : OUTDOOR_AREA_ID);
     }
+  });
+
+  it("六教跟科研大樓連成一棟：六教 1F 往北的通道進到科研 1F，科研 1F 出口回到通道裡，戶外沒有科研大樓的大門", () => {
+    const sixth = areas.get("sixth-1F")!;
+    const research = areas.get("research-1F")!;
+    const passage = sixth.warps[1];
+    expect(passage.toAreaId).toBe("research-1F");
+    expect({ x: passage.toX, y: passage.toY }).toEqual({
+      x: anchorsOf(research).entranceArrival.x,
+      y: anchorsOf(research).entranceArrival.y,
+    });
+    // 通道從走廊走得到
+    const reachable = reachableFrom(sixth.map, anchorsOf(sixth).entranceArrival.x, anchorsOf(sixth).entranceArrival.y);
+    expect(reachable.has(`${passage.x},${passage.y}`)).toBe(true);
+    // 從科研出來落在六教通道裡，而且跟通道出口隔一格
+    const back = research.warps[0];
+    expect(sixth.map.isWalkable(back.toX, back.toY)).toBe(true);
+    expect(Math.abs(back.toX - passage.x) + Math.abs(back.toY - passage.y)).toBeGreaterThan(1);
+    expect(outdoor.warps.some((warp) => warp.toAreaId === "research-1F")).toBe(false);
   });
 
   it("走進大門後不會立刻被彈回門外：入口降落點跟室內出口至少隔一格", () => {
     for (const area of areas.values()) {
       if (area.building?.floor !== 1) continue;
       const { entranceArrival } = anchorsOf(area);
-      const exitWarp = area.warps[0];
-      const distance = Math.abs(exitWarp.x - entranceArrival.x) + Math.abs(exitWarp.y - entranceArrival.y);
-      expect(distance, area.id).toBeGreaterThan(1);
+      for (const exitWarp of area.warps) {
+        const distance = Math.abs(exitWarp.x - entranceArrival.x) + Math.abs(exitWarp.y - entranceArrival.y);
+        expect(distance, area.id).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  it("東校區在建國南路對面：從正校門走人行穿越道過去走得到球場與運動場", () => {
+    const reachable = reachableFrom(outdoor.map, MAIN_GATE_SPAWN.x, MAIN_GATE_SPAWN.y);
+    const tiles = (type: TileType) => {
+      const found: string[] = [];
+      for (let y = 0; y < outdoor.map.height; y++) {
+        for (let x = 0; x < outdoor.map.width; x++) if (outdoor.map.getTile(x, y) === type) found.push(`${x},${y}`);
+      }
+      return found;
+    };
+    for (const type of [TileType.CrosswalkVertical, TileType.Court, TileType.Track]) {
+      const found = tiles(type);
+      expect(found.length, type).toBeGreaterThan(0);
+      expect(found.some((key) => reachable.has(key)), type).toBe(true);
+    }
+    for (const name of ["學生宿舍", "億光大樓"]) {
+      expect(outdoor.labels.some((label) => label.text === name), name).toBe(true);
     }
   });
 

@@ -71,15 +71,31 @@ export interface BuildingSpec {
   basementCount?: number;
   layout: BuildingLayout;
   /**
-   * 走出 1F 大門後，玩家出現在戶外地圖的位置與面向。絕大部分建築物大門開在南側，
-   * 出來後會站在門口正下方、面向下（direction: "down"）；先鋒大樓的門開在北側
-   * （面向忠孝東路對面的正校門），出來後就要站在門口正上方、面向上（"up"）。
+   * 走出 1F 出口後，玩家出現的位置與面向。絕大部分建築物是回到戶外地圖、站在大門正下方、面向下；
+   * 先鋒大樓的門開在北側（面向忠孝東路對面的正校門），出來後站在門口正上方、面向上。
+   * 科研大樓沒有自己的大門，1F 出口通到前面相連的六教 1F，這時 name 是那棟的名稱，出口標籤會寫「往某某」。
    */
-  outdoorExit: { areaId: string; x: number; y: number; direction: Direction };
+  exitTo: { areaId: string; x: number; y: number; direction: Direction; name?: string };
+  /**
+   * 長條型才有：1F 大廳北邊開一條通道，走到底會進到後面相連的建築物（六教 → 科研大樓）。
+   * to 是進到那棟之後玩家出現的位置。
+   */
+  backPassage?: { name: string; to: { areaId: string; x: number; y: number; direction: Direction } };
 }
 
 const ROOM_W = 4;
 const SLOT = ROOM_W + 1;
+
+type StripLayout = Extract<BuildingLayout, { type: "strip" }>;
+
+/**
+ * 長條型 1F 後方通道的位置：在電梯井東側那一行，從走廊往北打通到最北邊的牆，出口開在牆上。
+ * 從後面那棟走過來時，站在出口往南兩格、面向南（跟出口隔一格，才不會一動就被彈回去）。
+ */
+export function stripBackPassage(layout: StripLayout): { exit: { x: number; y: number }; arrival: TileSpot } {
+  const coreX = 1 + layout.slotsWest * SLOT;
+  return { exit: { x: coreX + 2, y: 0 }, arrival: { x: coreX + 2, y: 2, direction: "down" } };
+}
 
 /** 這棟建築物所有樓層，由高到低排列（例如 7, 6, ..., 1, -1, ..., -4）。 */
 export function buildingFloors(spec: Pick<BuildingSpec, "topFloor" | "basementCount">): number[] {
@@ -182,7 +198,7 @@ function placeStairs(canvas: FloorCanvas, tiles: Array<{ x: number; y: number }>
  *   y=10..13 南側房間；1F 正中間是大廳，兩側都有隔間牆（其他樓層那一塊是實心牆）
  *   y=14     牆；只有 1F 在大廳正下方有出口
  */
-function buildStripFloor(layout: Extract<BuildingLayout, { type: "strip" }>, floor: number): FloorBuild {
+function buildStripFloor(layout: StripLayout, floor: number): FloorBuild {
   const coreX = 1 + layout.slotsWest * SLOT;
   const width = coreX + 4 + layout.slotsEast * SLOT;
   const canvas = new FloorCanvas(width, 15);
@@ -362,12 +378,23 @@ export function buildFloorArea(spec: BuildingSpec, floor: number): Area {
     warps.push({
       x: built.exit.x,
       y: built.exit.y,
-      toAreaId: spec.outdoorExit.areaId,
-      toX: spec.outdoorExit.x,
-      toY: spec.outdoorExit.y,
-      direction: spec.outdoorExit.direction,
+      toAreaId: spec.exitTo.areaId,
+      toX: spec.exitTo.x,
+      toY: spec.exitTo.y,
+      direction: spec.exitTo.direction,
     });
-    canvas.labels.push({ text: "出口", x: built.exit.x, y: built.exit.y - 1 });
+    const exitText = spec.exitTo.name ? `往${spec.exitTo.name}` : "出口";
+    canvas.labels.push({ text: exitText, x: built.exit.x, y: built.exit.y - 1 });
+
+    if (spec.backPassage) {
+      if (spec.layout.type !== "strip") throw new Error(`${spec.name}：只有長條型建築可以開後方通道`);
+      const { exit } = stripBackPassage(spec.layout);
+      canvas.fill(exit.x, exit.y + 1, exit.x, 6, TileType.Floor);
+      canvas.set(exit.x, exit.y, TileType.Exit);
+      const { to } = spec.backPassage;
+      warps.push({ x: exit.x, y: exit.y, toAreaId: to.areaId, toX: to.x, toY: to.y, direction: to.direction });
+      canvas.labels.push({ text: `往${spec.backPassage.name}`, x: exit.x, y: exit.y + 2 });
+    }
   }
 
   return {

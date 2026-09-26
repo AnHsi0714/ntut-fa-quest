@@ -15,6 +15,7 @@ import {
   buildFloorArea,
   buildingFloors,
   findRoom,
+  stripBackPassage,
   type BuildingLayout,
   type BuildingSpec,
   type RingFloorPlan,
@@ -23,7 +24,12 @@ import {
 } from "./buildingLayout";
 
 export const OUTDOOR_AREA_ID = "campus";
-export const MAP_WIDTH = 56;
+/** 西校區（x 2～53 的圍籬內）+ 建國南路（x 54～55）+ 東校區（x 56～77 的圍籬內）。 */
+export const MAP_WIDTH = 78;
+/** 建國南路：西校區與東校區之間，貫穿整張地圖。 */
+const JIANGUO_ROAD_COLS: [number, number] = [54, 55];
+/** 東校區圍籬的範圍（含圍籬本身）：北邊以外是民宅，這裡用樹林表示。 */
+const EAST_CAMPUS = { x0: 56, x1: MAP_WIDTH - 1, y0: 7 };
 /** 圍籬內的校園本體高度（不含忠孝東路對面的街廓）。 */
 const CAMPUS_HEIGHT = 40;
 /** 忠孝東路：CAMPUS_HEIGHT 前兩排，正校門正對著它，過馬路就會走到對面的先鋒大樓。 */
@@ -80,10 +86,10 @@ type WallMaterial =
 
 /**
  * 戶外地圖上的建築物外觀。有 interior 的建築物才能從門口走進去，其餘只是地標。
- * 建築物名稱與相對位置參考北科大官網「校園地圖」：正門在忠孝東路，側門在新生南路與建國南路；
+ * 建築物名稱與分區參考北科大官網「校園地圖」：正門在忠孝東路，側門在新生南路與建國南路；
  * 正門左側是行政大樓、圖書館、教學大樓、紅樓等，右側是綜合科館與學生活動中心；
  * 新生南路側門往北是光華館、第六教學大樓與宏裕科技研究大樓（科研大樓），往南是土木館、材資館、設計館。
- * 位置只求大致方位正確，並非等比例重現。
+ * 位置與大小見 BUILDINGS 的說明。
  */
 interface OutdoorBuilding {
   id: string;
@@ -103,6 +109,13 @@ interface OutdoorBuilding {
    */
   entranceSide?: "south" | "north";
   interior?: { topFloor: number; basementCount?: number; layout: BuildingLayout };
+  /** L 形、T 形建築多出來的部分，跟本體用同一種外牆，名稱只標在本體正中央。 */
+  parts?: Array<{ x: number; y: number; w: number; h: number }>;
+  /**
+   * 跟後面那棟連成一棟：1F 大廳往北有通道走進去（六教 → 科研大樓）。
+   * 後面那棟不開自己的大門，1F 出口通回這棟。
+   */
+  backPassageTo?: string;
 }
 
 /** 房號開頭的數字（例如「331 資工系辦」→ 331、「110_1」→ 110），用來避免補房號時撞號。 */
@@ -181,8 +194,12 @@ function stripBuilding(
 }
 
 /**
- * 建築物位置依北科大校園平面圖（北邊八德路、西邊新生南路、南邊忠孝東路、東邊建國南路）換算成格子，
- * 只求相對位置正確，並非等比例重現。東校區（宿舍、運動場、億光大樓）不在這張地圖上。
+ * 建築物位置依北科大官網校園平面圖（使用者提供，含東校區），大小參考 OpenStreetMap 的建築輪廓（2026-09-26 查詢）：
+ * 經度 121.53300～121.53630 大約對到 x 3～53、緯度 25.04440～25.04215 大約對到 y 1～37，一格大約 6.6 公尺見方。
+ * 不同建築之間至少留一格空地可以走；只有第六教學大樓與科研大樓連成一棟（前面六教、後面科研）。
+ * L 形的建築（設計館、化學館、校史館）用 parts 補出多的那一塊，其他不規則的建築取主要量體的外接矩形。
+ * 東校區（學生宿舍、網球場、籃球場、運動場、億光大樓）在建國南路對面，只是地標；
+ * 平面圖上東校區往南延伸得比西校區多（忠孝東路是斜的），這張地圖的馬路是直的，所以東校區南北向有稍微壓縮。
  *
  * 房號來源：課務系統「114 學年度第 2 學期教室使用表」（排課用的教室），再加上教務處「E化教室一覽表」。
  * 表上沒有的房間（辦公室、研究室等）依樓層補上房號，所以補出來的號碼不一定是實際房號。
@@ -194,13 +211,13 @@ const BUILDINGS: OutdoorBuilding[] = [
     // 宏裕科技研究大樓，學生通稱「科研大樓」，長條型。地上 16 層，B3 是影印中心（B1、B2 查不到用途，不放房間）。
     // 資工系辦在 3F 331 室（資工系網站「聯絡方式」）；系主任室、12F 教師研究室與實驗室，
     // 以及文件 D 的 5F 指導老師研究室、9F 導師研究室、13F 教師研究室都是遊戲設定。
+    // 跟第六教學大樓連成一棟（前面六教、後面科研），沒有自己的大門，要從六教 1F 大廳往北走進來。
     name: "科研大樓",
     material: TileType.WallGlass,
     x: 14,
     y: 2,
     w: 6,
-    h: 7,
-    door: { x: 16, y: 8 },
+    h: 5,
     interior: {
       topFloor: 16,
       basementCount: 3,
@@ -230,10 +247,11 @@ const BUILDINGS: OutdoorBuilding[] = [
     name: "第六教學大樓",
     material: TileType.WallConcrete,
     x: 14,
-    y: 10,
+    y: 7,
     w: 6,
-    h: 2,
-    door: { x: 16, y: 11 },
+    h: 4,
+    door: { x: 16, y: 10 },
+    backPassageTo: "research",
     interior: {
       topFloor: 7,
       basementCount: 4,
@@ -262,8 +280,8 @@ const BUILDINGS: OutdoorBuilding[] = [
     x: 4,
     y: 2,
     w: 9,
-    h: 7,
-    door: { x: 8, y: 8 },
+    h: 6,
+    door: { x: 8, y: 7 },
     interior: {
       topFloor: 4,
       layout: stripBuilding(2, 2, 4, {
@@ -280,11 +298,11 @@ const BUILDINGS: OutdoorBuilding[] = [
     // 7F 總務處，8F 校長室、秘書室。其他房間的房號是補上的。
     name: "行政大樓",
     material: TileType.WallTanMosaic,
-    x: 32,
+    x: 33,
     y: 26,
-    w: 6,
+    w: 5,
     h: 5,
-    door: { x: 34, y: 30 },
+    door: { x: 35, y: 30 },
     interior: {
       topFloor: 8,
       layout: stripBuilding(2, 2, 8, {
@@ -308,8 +326,8 @@ const BUILDINGS: OutdoorBuilding[] = [
     x: 21,
     y: 23,
     w: 10,
-    h: 6,
-    door: { x: 25, y: 28 },
+    h: 5,
+    door: { x: 25, y: 27 },
     interior: {
       topFloor: 5,
       layout: {
@@ -333,9 +351,9 @@ const BUILDINGS: OutdoorBuilding[] = [
     material: TileType.WallWashedStone,
     x: 14,
     y: 16,
-    w: 6,
-    h: 2,
-    door: { x: 16, y: 17 },
+    w: 4,
+    h: 4,
+    door: { x: 15, y: 19 },
     interior: {
       topFloor: 3,
       layout: stripBuilding(1, 1, 3, { 1: ["多功能教室"], 3: ["301", "302", "303"] }),
@@ -350,7 +368,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 16,
     w: 10,
     h: 2,
-    door: { x: 24, y: 17 },
+    door: { x: 25, y: 17 },
     interior: {
       topFloor: 3,
       layout: stripBuilding(2, 2, 3, {
@@ -385,10 +403,10 @@ const BUILDINGS: OutdoorBuilding[] = [
     name: "共同科館",
     material: TileType.WallConcrete,
     x: 21,
-    y: 30,
+    y: 29,
     w: 10,
     h: 6,
-    door: { x: 25, y: 35 },
+    door: { x: 25, y: 34 },
     interior: {
       topFloor: 7,
       basementCount: 1,
@@ -414,7 +432,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     material: TileType.WallTanMosaic,
     x: 42,
     y: 21,
-    w: 10,
+    w: 11,
     h: 15,
     door: { x: 46, y: 35 },
     interior: {
@@ -444,9 +462,11 @@ const BUILDINGS: OutdoorBuilding[] = [
     material: TileType.WallWashedStone,
     x: 5,
     y: 29,
-    w: 12,
-    h: 5,
-    door: { x: 10, y: 33 },
+    w: 9,
+    h: 3,
+    door: { x: 8, y: 31 },
+    // L 形：東南角多一塊往下突出
+    parts: [{ x: 12, y: 31, w: 6, h: 2 }],
     interior: {
       topFloor: 7,
       basementCount: 1,
@@ -467,16 +487,36 @@ const BUILDINGS: OutdoorBuilding[] = [
       ),
     },
   },
-  { id: "memorial", name: "國父百年紀念館", material: TileType.WallWashedStone, x: 4, y: 10, w: 9, h: 2 },
-  { id: "alumni", name: "校友會館", material: TileType.WallConcrete, x: 21, y: 2, w: 7, h: 5 },
-  { id: "chemEng", name: "化學工程館", material: TileType.WallConcrete, x: 21, y: 8, w: 8, h: 3 },
-  { id: "molecular", name: "分子科學工程館", material: TileType.WallConcrete, x: 30, y: 8, w: 8, h: 3 },
-  { id: "activity", name: "學生活動中心", material: TileType.WallConcrete, x: 42, y: 10, w: 10, h: 6 },
-  { id: "civil", name: "土木館", material: TileType.WallWashedStone, x: 4, y: 17, w: 8, h: 3 },
+  { id: "memorial", name: "國父百年紀念館", material: TileType.WallWashedStone, x: 4, y: 9, w: 9, h: 2 },
+  { id: "alumni", name: "校友會館", material: TileType.WallConcrete, x: 21, y: 2, w: 7, h: 4 },
+  { id: "chemEng", name: "化學工程館", material: TileType.WallConcrete, x: 21, y: 7, w: 7, h: 3 },
+  { id: "molecular", name: "分子科學工程館", material: TileType.WallConcrete, x: 29, y: 8, w: 8, h: 3 },
+  { id: "activity", name: "學生活動中心", material: TileType.WallConcrete, x: 42, y: 12, w: 10, h: 5 },
+  { id: "civil", name: "土木館", material: TileType.WallWashedStone, x: 4, y: 16, w: 8, h: 3 },
   { id: "materials", name: "材資館", material: TileType.WallWashedStone, x: 4, y: 22, w: 8, h: 3 },
-  { id: "chemistry", name: "化學館", material: TileType.WallWashedStone, x: 32, y: 16, w: 5, h: 4 },
+  {
+    id: "chemistry",
+    // L 形：東側往南多一段
+    name: "化學館",
+    material: TileType.WallWashedStone,
+    x: 32,
+    y: 16,
+    w: 5,
+    h: 2,
+    parts: [{ x: 35, y: 18, w: 2, h: 2 }],
+  },
   { id: "redHouse", name: "紅樓", material: TileType.WallRedBrick, x: 26, y: 19, w: 4, h: 2 },
-  { id: "history", name: "校史館", material: TileType.WallWashedStone, x: 17, y: 21, w: 3, h: 7 },
+  {
+    id: "history",
+    // L 形：西側一長條加上北側往東的一段，包住三教的西北角
+    name: "校史館",
+    material: TileType.WallWashedStone,
+    x: 17,
+    y: 21,
+    w: 2,
+    h: 7,
+    parts: [{ x: 19, y: 21, w: 6, h: 1 }],
+  },
   {
     id: "library",
     // 圖書館：官網「樓層配置」頁面列出各樓層服務分區。
@@ -503,18 +543,22 @@ const BUILDINGS: OutdoorBuilding[] = [
       ),
     },
   },
-  { id: "artCenter", name: "藝文中心", material: TileType.WallConcrete, x: 32, y: 32, w: 5, h: 1 },
+  { id: "artCenter", name: "藝文中心", material: TileType.WallConcrete, x: 33, y: 32, w: 4, h: 1 },
+  // 東校區（建國南路對面）：學生宿舍、億光大樓（集思北科大會議中心），都只是地標
+  { id: "dormA", name: "學生宿舍", material: TileType.WallConcrete, x: 57, y: 9, w: 8, h: 3 },
+  { id: "dormB", name: "學生宿舍", material: TileType.WallConcrete, x: 66, y: 8, w: 8, h: 3 },
+  { id: "everlight", name: "億光大樓", material: TileType.WallGlass, x: 70, y: 32, w: 7, h: 4 },
   {
     id: "pioneer",
     // 先鋒國際研發大樓：官網「本校導覽」提到位在正門對面（忠孝東路），需要過馬路才能到；
     // 2022 年啟用。課務系統教室使用表查得到 2F、4F、5F、6F、14F 的房號，其餘樓層補上房號。
     name: "先鋒大樓",
     material: TileType.WallGlass,
-    x: 36,
+    x: 29,
     y: 42,
     w: 8,
-    h: 6,
-    door: { x: 39, y: 42 },
+    h: 5,
+    door: { x: 32, y: 42 },
     // 大門面向忠孝東路（北側），跟其他建築物的大門方向相反。
     entranceSide: "north",
     interior: {
@@ -535,46 +579,65 @@ function buildOutdoorArea(
   entranceOf: (buildingId: string) => BuildingAnchors["entranceArrival"]
 ): Area {
   const grid = createGrid(MAP_WIDTH, MAP_HEIGHT, TileType.Grass);
+  const westFenceX = JIANGUO_ROAD_COLS[0] - 1;
+  const campusBottom = ZHONGXIAO_ROAD_ROWS[0] - 1;
 
-  // 校外馬路：西邊新生南路、東邊建國南路（貫穿整張地圖，包含忠孝東路對面的街廓）、南邊忠孝東路
+  // 校外馬路：西邊新生南路、建國南路（西校區與東校區之間），都貫穿整張地圖；南邊忠孝東路
   fillRect(grid, 0, 0, 2, MAP_HEIGHT, TileType.Road);
-  fillRect(grid, MAP_WIDTH - 2, 0, 2, MAP_HEIGHT, TileType.Road);
+  fillRect(grid, JIANGUO_ROAD_COLS[0], 0, 2, MAP_HEIGHT, TileType.Road);
   fillRect(grid, 0, ZHONGXIAO_ROAD_ROWS[0], MAP_WIDTH, 2, TileType.Road);
 
-  // 校園圍籬（樹林），只圍住校園本體；忠孝東路對面的街廓（先鋒大樓）另外圍一圈
-  fillRect(grid, 2, 0, MAP_WIDTH - 4, 1, TileType.Border);
-  fillRect(grid, 2, 0, 1, ZHONGXIAO_ROAD_ROWS[0], TileType.Border);
-  fillRect(grid, MAP_WIDTH - 3, 0, 1, ZHONGXIAO_ROAD_ROWS[0], TileType.Border);
-  fillRect(grid, 2, ZHONGXIAO_ROAD_ROWS[0] - 1, MAP_WIDTH - 4, 1, TileType.Border);
+  // 西校區圍籬（樹林）
+  fillRect(grid, 2, 0, westFenceX - 1, 1, TileType.Border);
+  fillRect(grid, 2, 0, 1, campusBottom + 1, TileType.Border);
+  fillRect(grid, westFenceX, 0, 1, campusBottom + 1, TileType.Border);
+  fillRect(grid, 2, campusBottom, westFenceX - 1, 1, TileType.Border);
+  // 西校區東北角是八德路旁的民宅，校地邊界從分子科學工程館北側斜斜往東南到學生活動中心北側
+  for (let x = 29; x < westFenceX; x++) {
+    fillRect(grid, x, 0, 1, Math.round(((x - 28) * 11) / 25) + 1, TileType.Border);
+  }
 
-  // 校門：正校門（忠孝東路）、新生校門、新生側門（新生南路）、建國側門（建國南路）。
+  // 東校區：北邊是民宅（樹林），往南圍一圈圍籬
+  const { x0: eastX0, x1: eastX1, y0: eastY0 } = EAST_CAMPUS;
+  fillRect(grid, eastX0, 0, eastX1 - eastX0 + 1, eastY0 + 1, TileType.Border);
+  fillRect(grid, eastX0, eastY0, 1, campusBottom - eastY0 + 1, TileType.Border);
+  fillRect(grid, eastX1, eastY0, 1, campusBottom - eastY0 + 1, TileType.Border);
+  fillRect(grid, eastX0, campusBottom, eastX1 - eastX0 + 1, 1, TileType.Border);
+
+  // 校門：正校門（忠孝東路）、新生校門、新生側門（新生南路）、建國側門與東校區建國側門（建國南路兩側）。
   // 道路都是 4 格寬，玩家跟走動的學生可以錯身而過。
-  fillRect(grid, 38, ZHONGXIAO_ROAD_ROWS[0] - 1, 4, 1, TileType.Gate);
+  fillRect(grid, 38, campusBottom, 4, 1, TileType.Gate);
   fillRect(grid, 2, 12, 1, 4, TileType.Gate);
   fillRect(grid, 2, 25, 1, 4, TileType.Gate);
-  fillRect(grid, MAP_WIDTH - 3, 17, 1, 4, TileType.Gate);
+  fillRect(grid, westFenceX, 17, 1, 4, TileType.Gate);
+  fillRect(grid, eastX0, 17, 1, 4, TileType.Gate);
 
   // 道路
   fillRect(grid, 38, 12, 4, CAMPUS_HEIGHT - 15, TileType.Path); // 正校門往北的主幹道
   fillRect(grid, 3, 12, 35, 4, TileType.Path); // 新生校門進來、橫貫校園北側的道路
-  fillRect(grid, 42, 17, MAP_WIDTH - 45, 4, TileType.Path); // 建國側門進來的道路
+  fillRect(grid, 42, 17, westFenceX - 42, 4, TileType.Path); // 建國側門進來的道路
   fillRect(grid, 3, 25, 10, 4, TileType.Path); // 新生側門進來的道路
+  fillRect(grid, eastX0 + 1, 17, 12, 4, TileType.Path); // 東校區建國側門進來的道路
 
   // 正校門內、行政大樓前的廣場
   fillRect(grid, 31, 33, 8, 4, TileType.Plaza);
 
-  // 忠孝東路對面的街廓（先鋒大樓）：人行穿越道 + 圍住這一塊的樹林
+  // 建國南路上的人行穿越道：建國側門直接過馬路到東校區建國側門
+  fillRect(grid, JIANGUO_ROAD_COLS[0], 17, 2, 4, TileType.CrosswalkVertical);
+
+  // 東校區的球場與運動場（跑道圍一圈，中間是草皮）
+  fillRect(grid, 58, 13, 4, 4, TileType.Court);
+  fillRect(grid, 63, 13, 4, 4, TileType.Court);
+  fillRect(grid, 60, 23, 9, 13, TileType.Track);
+  fillRect(grid, 62, 25, 5, 9, TileType.Grass);
+
+  // 忠孝東路對面的街廓（先鋒大樓）：人行穿越道 + 圍住這一塊的樹林；建國南路以東不在這張地圖的範圍，整塊種樹
   fillRect(grid, 38, ZHONGXIAO_ROAD_ROWS[0], 4, 2, TileType.Crosswalk);
-  fillRect(grid, 2, ZHONGXIAO_ROAD_ROWS[1] + 1, 1, MAP_HEIGHT - ZHONGXIAO_ROAD_ROWS[1] - 2, TileType.Border);
-  fillRect(
-    grid,
-    MAP_WIDTH - 3,
-    ZHONGXIAO_ROAD_ROWS[1] + 1,
-    1,
-    MAP_HEIGHT - ZHONGXIAO_ROAD_ROWS[1] - 2,
-    TileType.Border
-  );
-  fillRect(grid, 2, MAP_HEIGHT - 1, MAP_WIDTH - 4, 1, TileType.Border);
+  const southTop = ZHONGXIAO_ROAD_ROWS[1] + 1;
+  fillRect(grid, 2, southTop, 1, MAP_HEIGHT - southTop, TileType.Border);
+  fillRect(grid, westFenceX, southTop, 1, MAP_HEIGHT - southTop, TileType.Border);
+  fillRect(grid, 2, MAP_HEIGHT - 1, westFenceX - 1, 1, TileType.Border);
+  fillRect(grid, eastX0, southTop, eastX1 - eastX0 + 1, MAP_HEIGHT - southTop, TileType.Border);
 
   const warps: Warp[] = [];
   const labels: PlaceLabel[] = [
@@ -582,11 +645,16 @@ function buildOutdoorArea(
     { text: "正校門（忠孝東路）", x: 39.5, y: ZHONGXIAO_ROAD_ROWS[1] },
     { text: "新生校門", x: 3.5, y: 12 },
     { text: "新生側門", x: 3.5, y: 25 },
-    { text: "建國側門", x: MAP_WIDTH - 5, y: 17 },
+    { text: "建國側門", x: westFenceX - 2, y: 17 },
+    { text: "東校區建國側門", x: eastX0 + 3, y: 17 },
+    { text: "網球場", x: 59.5, y: 15.5 },
+    { text: "籃球場", x: 64.5, y: 15.5 },
+    { text: "運動場", x: 64, y: 30 },
   ];
 
   for (const building of buildings) {
     fillRect(grid, building.x, building.y, building.w, building.h, building.material);
+    for (const part of building.parts ?? []) fillRect(grid, part.x, part.y, part.w, part.h, building.material);
     // 名稱放在建築物正中央（標籤底邊貼在這個 y 的上緣，所以往下多推半格）
     labels.push({
       text: building.name,
@@ -618,20 +686,41 @@ function buildOutdoorArea(
   };
 }
 
-function toBuildingSpec(building: OutdoorBuilding): BuildingSpec | undefined {
-  if (!building.door || !building.interior) return undefined;
-  const north = building.entranceSide === "north";
-  return {
-    ...building.interior,
-    id: building.id,
-    name: building.name,
-    outdoorExit: {
+/**
+ * 戶外建築物 → 室內樓層的設定。areas 是已經產生好的樓層：前面那棟（六教）的後方通道
+ * 要通到後面那棟（科研大樓）的 1F，所以後面那棟要排在 BUILDINGS 前面、先產生。
+ */
+function toBuildingSpec(building: OutdoorBuilding, areas: Map<string, Area>): BuildingSpec | undefined {
+  if (!building.interior) return undefined;
+  const front = BUILDINGS.find((candidate) => candidate.backPassageTo === building.id);
+
+  let exitTo: BuildingSpec["exitTo"];
+  if (front) {
+    // 沒有自己的大門：1F 出口通回前面那棟 1F 的後方通道
+    if (front.interior?.layout.type !== "strip") throw new Error(`${front.name} 不是長條型，不能開後方通道`);
+    const { arrival } = stripBackPassage(front.interior.layout);
+    exitTo = { areaId: floorAreaId(front.id, 1), ...arrival, name: front.name };
+  } else if (building.door) {
+    const north = building.entranceSide === "north";
+    exitTo = {
       areaId: OUTDOOR_AREA_ID,
       x: building.door.x,
       y: building.door.y + (north ? -1 : 1),
       direction: north ? "up" : "down",
-    },
-  };
+    };
+  } else {
+    return undefined;
+  }
+
+  let backPassage: BuildingSpec["backPassage"];
+  if (building.backPassageTo) {
+    const behind = BUILDINGS.find((candidate) => candidate.id === building.backPassageTo);
+    const behindLobby = areas.get(floorAreaId(building.backPassageTo, 1));
+    if (!behind || !behindLobby) throw new Error(`${building.name} 的後方通道找不到 ${building.backPassageTo} 1F`);
+    backPassage = { name: behind.name, to: { areaId: behindLobby.id, ...behindLobby.building!.anchors.entranceArrival } };
+  }
+
+  return { ...building.interior, id: building.id, name: building.name, exitTo, backPassage };
 }
 
 /** 任務相關單位的辦公室位置：NPC 設定、警衛與服務台的指路台詞、任務面板都共用這份，避免寫法不一致。 */
@@ -850,10 +939,10 @@ function declareHelperNpcs(w: WorldLookup): NpcSpawn[] {
       lines: [
         "我是正門警衛。校園晚上 8 點關門，時間到了我會請你離開，隔天早上 8 點再來。",
         `要找辦公室的話：承辦老師在${OFFICES.advisor}；系辦是${OFFICES.department}，系主任室就在隔壁；教務處在行政大樓 2F。`,
-        "科研大樓：沿主幹道往北走到底，再沿新生校門那條路往西就到了。行政大樓：正校門進來左手邊，廣場後面。",
+        "科研大樓跟六教連在一起：沿主幹道往北走到底，再沿新生校門那條路往西，從六教大門進去，1F 大廳往北走到底就是科研大樓。行政大樓：正校門進來左手邊，廣場後面。",
         "肚子餓的話，光華館 1、2F 的綠光庭園有得吃，吃飽體力就回來了。各棟 1F 大廳也有休息區可以坐一下。",
         "要印申請單的話，科研大樓 B3 有影印中心；成績單要到行政大樓 2F、5F 或三教 1F 的列印機印。",
-        "正校門正對面過個馬路就是先鋒大樓，走人行穿越道過去比較安全。",
+        "正校門過忠孝東路，對面稍微偏西就是先鋒大樓，走人行穿越道過去比較安全。",
       ],
     },
     {
@@ -868,7 +957,7 @@ function declareHelperNpcs(w: WorldLookup): NpcSpawn[] {
       direction: "right",
       greeting: "這裡是新生校門。",
       lines: [
-        "這裡是新生校門。往北是光華館（綠光庭園）、科研大樓跟六教，往東沿著這條路一直走就會接到正校門的主幹道。",
+        "這裡是新生校門。往北是光華館（綠光庭園）跟六教，科研大樓在六教後面，要從六教 1F 往北走進去。往東沿著這條路一直走就會接到正校門的主幹道。",
         "科研大樓 B3 有影印中心，印申請單就去那邊。",
         "晚上 8 點全校關門，關門後會請大家從正校門離開。",
       ],
@@ -965,8 +1054,8 @@ function declareHelperNpcs(w: WorldLookup): NpcSpawn[] {
       // 正校門廣場、行政大樓門口、三教門口、紅樓前之間走來走去
       destinations: [
         { x: 35, y: 34 },
-        { x: 34, y: 31 },
-        { x: 25, y: 29 },
+        { x: 35, y: 31 },
+        { x: 25, y: 28 },
         { x: 28, y: 21 },
         { x: 37, y: 36 },
       ],
@@ -987,13 +1076,12 @@ function declareHelperNpcs(w: WorldLookup): NpcSpawn[] {
         "國際處在第二教學大樓 1 樓，計網中心在共同科館 1 樓，聯合服務中心在三教 1 樓。",
         "我要遲到了，先走囉！",
       ],
-      // 在光華館、科研大樓、六教、一教、二教門口與北側道路之間趕場
+      // 在光華館、六教、一教、二教門口與北側道路之間趕場
       destinations: [
-        { x: 8, y: 9 },
-        { x: 17, y: 9 },
-        { x: 16, y: 12 },
-        { x: 16, y: 18 },
-        { x: 24, y: 18 },
+        { x: 8, y: 8 },
+        { x: 16, y: 11 },
+        { x: 15, y: 20 },
+        { x: 25, y: 18 },
         { x: 34, y: 14 },
       ],
     },
@@ -1011,6 +1099,7 @@ function declareHelperNpcs(w: WorldLookup): NpcSpawn[] {
       lines: [
         "學生活動中心在建國南路側門附近，社團活動大多在那邊。",
         "光華館一、二樓是綠光庭園，有路易莎可以喝咖啡。",
+        "建國側門過馬路就是東校區，學生宿舍、網球場、籃球場跟運動場都在那邊，億光大樓在最南邊。",
       ],
       // 學生活動中心、建國側門道路、綜合科館門口、主幹道
       destinations: [
@@ -1051,6 +1140,11 @@ function buildInfoDeskNpc(spec: BuildingSpec, w: WorldLookup): NpcSpawn {
       ? `這棟地上 ${spec.topFloor} 層、地下 ${basementCount} 層`
       : `這棟共有 ${spec.topFloor} 層`;
   const desk = w.area(spec.id, 1).building!.anchors.infoDesk;
+  const connection = spec.backPassage
+    ? `大廳往北走到底有通道可以到${spec.backPassage.name}。`
+    : spec.exitTo.name
+      ? `這棟沒有對外的大門，從大廳往南出去是${spec.exitTo.name}，再從那邊的大門出去。`
+      : "";
 
   return {
     id: `${spec.id}-desk`,
@@ -1064,7 +1158,7 @@ function buildInfoDeskNpc(spec: BuildingSpec, w: WorldLookup): NpcSpawn {
     direction: desk.direction,
     greeting: `歡迎來到${spec.name}。`,
     lines: [
-      `歡迎來到${spec.name}。${size}，樓梯在走廊最西邊，電梯在走廊中間。累了可以在大廳休息區坐一下。`,
+      `歡迎來到${spec.name}。${size}，樓梯在走廊最西邊，電梯在走廊中間。${connection}累了可以在大廳休息區坐一下。`,
       directory.length > 0 ? `樓層簡介：${directory.join("；")}。` : "這棟主要是教室和研究室。",
     ],
   };
@@ -1078,7 +1172,7 @@ export function buildCampusWorld(): { areas: Map<string, Area>; npcSpawns: NpcSp
   const areas = new Map<string, Area>();
   const specs: BuildingSpec[] = [];
   for (const building of BUILDINGS) {
-    const spec = toBuildingSpec(building);
+    const spec = toBuildingSpec(building, areas);
     if (!spec) continue;
     specs.push(spec);
     for (const floor of buildingFloors(spec)) {
