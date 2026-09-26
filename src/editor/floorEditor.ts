@@ -38,6 +38,9 @@ type MarkerTool =
   | "exit"
   | "passageExit"
   | "passageArrival"
+  | "sideExit"
+  | "sideArrival"
+  | "deleteSideExit"
   | "room"
   | "deleteRoom"
   | "label";
@@ -50,6 +53,9 @@ const MARKER_TOOLS: Array<{ id: MarkerTool; name: string; help: string }> = [
   { id: "exit", name: "出口位置", help: "1F 才用：點一格設成出口，走上去會回到戶外（科研大樓是回到六教）。" },
   { id: "passageExit", name: "後方通道出口", help: "六教 1F 才用：點一格設成出口，走上去會進到科研大樓 1F。" },
   { id: "passageArrival", name: "後方通道抵達點", help: "六教 1F 才用：從科研大樓走回來時站的位置。" },
+  { id: "sideExit", name: "側門出口", help: "1F 才用：選好側門編號後點一格設成出口，走上去會從戶外對應的那扇側門出去（第 1 個對到戶外第 2 扇門）。側門數量要跟戶外一樣，戶外的門在 campusMapData.ts 的 doors 設定。" },
+  { id: "sideArrival", name: "側門抵達點", help: "1F 才用：選好側門編號後點一格，從那扇側門進來時站的位置，跟那個側門出口至少隔一格。" },
+  { id: "deleteSideExit", name: "刪除側門", help: "點側門出口那一格，刪掉這個側門（圖塊不會動）。" },
   { id: "room", name: "房間", help: "先拖曳出房間範圍（房間裡面的格子），再點一下門的位置（貼在範圍外側一格）。會問名稱與是不是開放空間。" },
   { id: "deleteRoom", name: "刪除房間", help: "點房間裡任一格，刪掉這間房（圖塊不會動）。" },
   { id: "label", name: "文字標籤", help: "點一格新增標籤；點在既有標籤上會問要不要刪掉。" },
@@ -92,7 +98,8 @@ function checkContext(): CheckContext {
   return {
     expectedStairs: (sibling ?? area).building!.anchors.stairs.length,
     isGroundFloor: building.floor === 1,
-    needsBackPassage: area.warps.length > 1,
+    needsBackPassage: area.warps.length - area.building!.sideEntrances.length > 1,
+    sideExitCount: area.building!.sideEntrances.length,
     originalRoomNames: area.rooms.map((room) => room.name).filter((name): name is string => !!name),
   };
 }
@@ -117,6 +124,7 @@ function loadOverride(next: FloorOverride): void {
   byId<HTMLInputElement>("grid-height").value = String(override.height);
   byId<HTMLSelectElement>("floor-select").value = override.areaId;
   refreshStairOptions();
+  refreshSideOptions();
   render();
 }
 
@@ -126,6 +134,7 @@ function undo(): void {
   override = JSON.parse(previous);
   grid = rowsToTiles(override);
   refreshStairOptions();
+  refreshSideOptions();
   render();
 }
 
@@ -185,6 +194,31 @@ function applyMarker(marker: MarkerTool, x: number, y: number): void {
     case "passageArrival":
       override.backPassage = { exit: override.backPassage?.exit ?? { x, y: y - 2 }, arrival: spot(x, y) };
       break;
+    case "sideExit":
+    case "sideArrival": {
+      const sides = (override.sideExits ??= []);
+      const index = Number(byId<HTMLSelectElement>("side-index").value);
+      // 新增的側門先把出口與抵達點放在同一格，檢查會提醒再補另一個
+      const side = sides[index] ?? { exit: { x, y }, arrival: spot(x, y) };
+      if (marker === "sideExit") {
+        side.exit = { x, y };
+        paint(x, y, TileType.Exit);
+      } else {
+        side.arrival = spot(x, y);
+      }
+      sides[index] = side;
+      refreshSideOptions();
+      break;
+    }
+    case "deleteSideExit": {
+      const sides = override.sideExits ?? [];
+      const remaining = sides.filter((side) => !(side.exit.x === x && side.exit.y === y));
+      if (remaining.length === sides.length) return;
+      if (remaining.length > 0) override.sideExits = remaining;
+      else delete override.sideExits;
+      refreshSideOptions();
+      break;
+    }
     case "deleteRoom": {
       const room = override.rooms.find((candidate) => isInsideRoom(candidate, x, y));
       if (!room) return;
@@ -388,6 +422,10 @@ function render(): void {
     drawMarker("通", override.backPassage.exit, "#ff9b9b");
     drawMarker("回", override.backPassage.arrival, "#ff9b9b");
   }
+  override.sideExits?.forEach((side, index) => {
+    drawMarker(`側${index + 1}`, side.exit, "#ff9b9b");
+    drawMarker(`進${index + 1}`, side.arrival, "#ffb38a");
+  });
 
   const preview = dragStart && dragEnd ? normalizedRect(dragStart, dragEnd) : pendingRoom;
   if (preview) {
@@ -432,6 +470,17 @@ function refreshStairOptions(): void {
   select.replaceChildren(
     ...override.anchors.stairs.map((_, index) => new Option(`第 ${index + 1} 座`, String(index))),
     new Option("新增一座", String(override.anchors.stairs.length))
+  );
+  if ([...select.options].some((option) => option.value === previous)) select.value = previous;
+}
+
+function refreshSideOptions(): void {
+  const select = byId<HTMLSelectElement>("side-index");
+  const previous = select.value;
+  const count = override.sideExits?.length ?? 0;
+  select.replaceChildren(
+    ...Array.from({ length: count }, (_, index) => new Option(`第 ${index + 1} 個`, String(index))),
+    new Option("新增一個", String(count))
   );
   if ([...select.options].some((option) => option.value === previous)) select.value = previous;
 }

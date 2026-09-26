@@ -5,7 +5,7 @@ import { TileType } from "../game/tileTypes";
 import { checkFloor, makeRoom, refreshStairTiles, type CheckContext } from "./floorChecks";
 
 describe("樓層編輯器的檢查", () => {
-  const { areas } = buildCampusWorld(new Map());
+  const { areas } = buildCampusWorld();
   const buildingAreas = [...areas.values()].filter((area) => area.building);
 
   const contextOf = (areaId: string): CheckContext => {
@@ -13,12 +13,13 @@ describe("樓層編輯器的檢查", () => {
     return {
       expectedStairs: area.building!.anchors.stairs.length,
       isGroundFloor: area.building!.floor === 1,
-      needsBackPassage: area.warps.length > 1,
+      needsBackPassage: area.warps.length - area.building!.sideEntrances.length > 1,
+      sideExitCount: area.building!.sideEntrances.length,
       originalRoomNames: area.rooms.map((room) => room.name).filter((name): name is string => !!name),
     };
   };
 
-  it("自動產生的每一層都通過檢查（編輯器規則跟遊戲測試一致）", () => {
+  it("遊戲裡的每一層（自動產生與手畫）都通過檢查（編輯器規則跟遊戲測試一致）", () => {
     for (const area of buildingAreas) {
       const override = areaToOverride(area, areas);
       const failed = checkFloor(override, rowsToTiles(override), contextOf(area.id)).filter((check) => !check.ok);

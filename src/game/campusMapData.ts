@@ -7,8 +7,8 @@ import {
   floorAreaId,
   floorLabel,
   type Area,
-  type BuildingAnchors,
   type PlaceLabel,
+  type TileSpot,
   type RoomRegion,
   type Warp,
 } from "./area";
@@ -85,6 +85,25 @@ type WallMaterial =
   | TileType.WallGlass
   | TileType.WallConcrete;
 
+interface BuildingDoor {
+  x: number;
+  y: number;
+  side?: "south" | "north" | "east" | "west";
+}
+
+const DOOR_OUTSIDE: Record<NonNullable<BuildingDoor["side"]>, { dx: number; dy: number; direction: Direction }> = {
+  south: { dx: 0, dy: 1, direction: "down" },
+  north: { dx: 0, dy: -1, direction: "up" },
+  east: { dx: 1, dy: 0, direction: "right" },
+  west: { dx: -1, dy: 0, direction: "left" },
+};
+
+/** 走出這扇門後站的位置：門外一格、背對建築物。 */
+function outsideOf(door: BuildingDoor): { areaId: string; x: number; y: number; direction: Direction } {
+  const { dx, dy, direction } = DOOR_OUTSIDE[door.side ?? "south"];
+  return { areaId: OUTDOOR_AREA_ID, x: door.x + dx, y: door.y + dy, direction };
+}
+
 /**
  * 戶外地圖上的建築物外觀。有 interior 的建築物才能從門口走進去，其餘只是地標。
  * 建築物名稱與分區參考北科大官網「校園地圖」：正門在忠孝東路，側門在新生南路與建國南路；
@@ -101,14 +120,12 @@ interface OutdoorBuilding {
   h: number;
   /** 外牆材質，見 tileTypes.ts 的說明。 */
   material: WallMaterial;
-  /** 大門位置，走上去就會進到 1F；預設在建築物最下面一排，見 entranceSide。 */
-  door?: { x: number; y: number };
   /**
-   * 大門面向哪一側，決定走出大門後玩家出現的位置與面向。預設 "south"（大門在建築物最下面一排，
-   * 出來後站在門口正下方、面向下）；先鋒大樓的門在北側（面向忠孝東路對面的正校門），
-   * 出來後要站在門口正上方、面向上，才不會一出來就對著自己剛走出來的牆。
+   * 大門，走上去就會進到 1F。第一扇是正門，對到 1F 的出口與入口抵達點；
+   * 之後的是側門，依序對到手畫 1F 的 sideExits（只有手畫的 1F 能開側門）。
+   * side 是門開在建築物哪一面，決定走出來後站在門外哪一格、面向哪邊，預設 "south"（站在門口正下方、面向下）。
    */
-  entranceSide?: "south" | "north";
+  doors?: BuildingDoor[];
   interior?: { topFloor: number; basementCount?: number; layout: BuildingLayout };
   /** L 形、T 形建築多出來的部分，跟本體用同一種外牆，名稱只標在本體正中央。 */
   parts?: Array<{ x: number; y: number; w: number; h: number }>;
@@ -254,7 +271,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 7,
     w: 6,
     h: 4,
-    door: { x: 16, y: 10 },
+    doors: [{ x: 16, y: 10 }],
     backPassageTo: "research",
     interior: {
       topFloor: 7,
@@ -285,7 +302,8 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 2,
     w: 9,
     h: 6,
-    door: { x: 8, y: 7 },
+    // 正門在南側；北側大廳也有入口（2010 年設計圖）
+    doors: [{ x: 8, y: 7 }, { x: 10, y: 2, side: "north" }],
     interior: {
       topFloor: 4,
       layout: stripBuilding(2, 2, 4, {
@@ -306,7 +324,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 26,
     w: 5,
     h: 5,
-    door: { x: 35, y: 30 },
+    doors: [{ x: 35, y: 30 }],
     interior: {
       topFloor: 8,
       layout: stripBuilding(2, 2, 8, {
@@ -331,7 +349,8 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 23,
     w: 10,
     h: 5,
-    door: { x: 25, y: 27 },
+    // 正門在南側；西側電梯廳旁也有入口（2010 年設計圖）
+    doors: [{ x: 25, y: 27 }, { x: 21, y: 24, side: "west" }],
     interior: {
       topFloor: 5,
       layout: {
@@ -357,7 +376,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 16,
     w: 4,
     h: 4,
-    door: { x: 15, y: 19 },
+    doors: [{ x: 15, y: 19 }],
     interior: {
       topFloor: 3,
       layout: stripBuilding(1, 1, 3, { 1: ["多功能教室"], 3: ["301", "302", "303"] }),
@@ -372,7 +391,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 16,
     w: 10,
     h: 2,
-    door: { x: 25, y: 17 },
+    doors: [{ x: 25, y: 17 }],
     interior: {
       topFloor: 3,
       layout: stripBuilding(2, 2, 3, {
@@ -391,7 +410,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 21,
     w: 2,
     h: 7,
-    door: { x: 14, y: 27 },
+    doors: [{ x: 14, y: 27 }],
     interior: {
       topFloor: 3,
       layout: stripBuilding(2, 2, 3, {
@@ -410,7 +429,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 29,
     w: 10,
     h: 6,
-    door: { x: 25, y: 34 },
+    doors: [{ x: 25, y: 34 }],
     interior: {
       topFloor: 7,
       basementCount: 1,
@@ -438,7 +457,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 21,
     w: 11,
     h: 15,
-    door: { x: 46, y: 35 },
+    doors: [{ x: 46, y: 35 }],
     interior: {
       topFloor: 8,
       basementCount: 1,
@@ -468,8 +487,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 29,
     w: 9,
     h: 3,
-    door: { x: 11, y: 29 },
-    entranceSide: "north",
+    doors: [{ x: 11, y: 29, side: "north" }],
     // L 形：東南角多一塊往下突出
     parts: [{ x: 12, y: 31, w: 6, h: 2 }],
     interior: {
@@ -531,7 +549,7 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 21,
     w: 6,
     h: 4,
-    door: { x: 34, y: 24 },
+    doors: [{ x: 34, y: 24 }],
     interior: {
       topFloor: 3,
       basementCount: 1,
@@ -563,9 +581,8 @@ const BUILDINGS: OutdoorBuilding[] = [
     y: 42,
     w: 8,
     h: 5,
-    door: { x: 32, y: 42 },
     // 大門面向忠孝東路（北側），跟其他建築物的大門方向相反。
-    entranceSide: "north",
+    doors: [{ x: 32, y: 42, side: "north" }],
     interior: {
       topFloor: 14,
       layout: stripBuilding(3, 3, 14, {
@@ -581,7 +598,8 @@ const BUILDINGS: OutdoorBuilding[] = [
 
 function buildOutdoorArea(
   buildings: OutdoorBuilding[],
-  entranceOf: (buildingId: string) => BuildingAnchors["entranceArrival"]
+  /** 從各扇門進到 1F 時站的位置，順序跟 doors 一樣（正門、側門……）。 */
+  entrancesOf: (buildingId: string) => TileSpot[]
 ): Area {
   const grid = createGrid(MAP_WIDTH, MAP_HEIGHT, TileType.Grass);
   const westFenceX = JIANGUO_ROAD_COLS[0] - 1;
@@ -667,18 +685,20 @@ function buildOutdoorArea(
       y: building.y + building.h / 2 + 0.5,
     });
 
-    if (building.door && building.interior) {
-      setTile(grid, building.door.x, building.door.y, TileType.Door);
-      const entrance = entranceOf(building.id);
+    if (!building.interior) continue;
+    const entrances = entrancesOf(building.id);
+    (building.doors ?? []).forEach((door, index) => {
+      setTile(grid, door.x, door.y, TileType.Door);
+      const entrance = entrances[index];
       warps.push({
-        x: building.door.x,
-        y: building.door.y,
+        x: door.x,
+        y: door.y,
         toAreaId: floorAreaId(building.id, 1),
         toX: entrance.x,
         toY: entrance.y,
         direction: entrance.direction,
       });
-    }
+    });
   }
 
   return {
@@ -712,17 +732,12 @@ function toBuildingSpec(
     const handDrawn = overrides.get(frontLobbyId)?.backPassage;
     const { arrival } = handDrawn ?? stripBackPassage(front.interior.layout);
     exitTo = { areaId: frontLobbyId, ...arrival, name: front.name };
-  } else if (building.door) {
-    const north = building.entranceSide === "north";
-    exitTo = {
-      areaId: OUTDOOR_AREA_ID,
-      x: building.door.x,
-      y: building.door.y + (north ? -1 : 1),
-      direction: north ? "up" : "down",
-    };
+  } else if (building.doors?.length) {
+    exitTo = outsideOf(building.doors[0]);
   } else {
     return undefined;
   }
+  const sideExitTo = (building.doors ?? []).slice(1).map(outsideOf);
 
   let backPassage: BuildingSpec["backPassage"];
   if (building.backPassageTo) {
@@ -732,7 +747,7 @@ function toBuildingSpec(
     backPassage = { name: behind.name, to: { areaId: behindLobby.id, ...behindLobby.building!.anchors.entranceArrival } };
   }
 
-  return { ...building.interior, id: building.id, name: building.name, exitTo, backPassage };
+  return { ...building.interior, id: building.id, name: building.name, exitTo, backPassage, sideExitTo };
 }
 
 /** 任務相關單位的辦公室位置：NPC 設定、警衛與服務台的指路台詞、任務面板都共用這份，避免寫法不一致。 */
@@ -1157,6 +1172,7 @@ function buildInfoDeskNpc(spec: BuildingSpec, w: WorldLookup): NpcSpawn {
     : spec.exitTo.name
       ? `這棟沒有對外的大門，從大廳往南出去是${spec.exitTo.name}，再從那邊的大門出去。`
       : "";
+  const sideDoors = spec.sideExitTo?.length ? `除了正門，1F 還有 ${spec.sideExitTo.length} 個側門可以進出。` : "";
 
   return {
     id: `${spec.id}-desk`,
@@ -1170,7 +1186,7 @@ function buildInfoDeskNpc(spec: BuildingSpec, w: WorldLookup): NpcSpawn {
     direction: desk.direction,
     greeting: `歡迎來到${spec.name}。`,
     lines: [
-      `歡迎來到${spec.name}。${size}。${connection}累了可以在大廳休息區坐一下。`,
+      `歡迎來到${spec.name}。${size}。${connection}${sideDoors}累了可以在大廳休息區坐一下。`,
       directory.length > 0 ? `樓層簡介：${directory.join("；")}。` : "這棟主要是教室和研究室。",
     ],
   };
@@ -1201,8 +1217,11 @@ export function buildCampusWorld(
   }
 
   const lookup = new WorldLookup(areas);
-  const entranceOf = (buildingId: string) => lookup.area(buildingId, 1).building!.anchors.entranceArrival;
-  areas.set(OUTDOOR_AREA_ID, buildOutdoorArea(BUILDINGS, entranceOf));
+  const entrancesOf = (buildingId: string) => {
+    const { anchors, sideEntrances } = lookup.area(buildingId, 1).building!;
+    return [anchors.entranceArrival, ...sideEntrances];
+  };
+  areas.set(OUTDOOR_AREA_ID, buildOutdoorArea(BUILDINGS, entrancesOf));
 
   const npcSpawns = [
     ...declareQuestNpcs(lookup),

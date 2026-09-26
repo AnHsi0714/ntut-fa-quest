@@ -14,7 +14,12 @@ export function isNpcWalkableTile(area: Area, x: number, y: number): boolean {
   if (area.warps.some((warp) => warp.x === x && warp.y === y)) return false;
   const anchors = area.building?.anchors;
   const reserved = anchors
-    ? [...anchors.stairs.map((staircase) => staircase.arrival), anchors.elevatorArrival, anchors.entranceArrival]
+    ? [
+        ...anchors.stairs.map((staircase) => staircase.arrival),
+        anchors.elevatorArrival,
+        anchors.entranceArrival,
+        ...area.building!.sideEntrances,
+      ]
     : [MAIN_GATE_SPAWN];
   return !reserved.some((spot) => spot.x === x && spot.y === y);
 }

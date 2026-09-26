@@ -98,9 +98,13 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
         expect(area.warps, area.id).toHaveLength(0);
         continue;
       }
-      if (area.id === "sixth-1F") expect(area.warps).toHaveLength(2);
-      else expect(area.warps, area.id).toHaveLength(1);
+      // 正門出口、六教的後方通道、各個側門出口
+      const sideCount = area.building.sideEntrances.length;
+      expect(area.warps, area.id).toHaveLength(1 + (area.id === "sixth-1F" ? 1 : 0) + sideCount);
       expect(area.warps[0].toAreaId, area.id).toBe(area.id === "research-1F" ? "sixth-1F" : OUTDOOR_AREA_ID);
+      for (const side of area.warps.slice(area.warps.length - sideCount)) {
+        expect(side.toAreaId, area.id).toBe(OUTDOOR_AREA_ID);
+      }
     }
   });
 
@@ -126,10 +130,11 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
   it("走進大門後不會立刻被彈回門外：入口降落點跟室內出口至少隔一格", () => {
     for (const area of areas.values()) {
       if (area.building?.floor !== 1) continue;
-      const { entranceArrival } = anchorsOf(area);
-      for (const exitWarp of area.warps) {
-        const distance = Math.abs(exitWarp.x - entranceArrival.x) + Math.abs(exitWarp.y - entranceArrival.y);
-        expect(distance, area.id).toBeGreaterThan(1);
+      for (const entrance of [anchorsOf(area).entranceArrival, ...area.building.sideEntrances]) {
+        for (const exitWarp of area.warps) {
+          const distance = Math.abs(exitWarp.x - entrance.x) + Math.abs(exitWarp.y - entrance.y);
+          expect(distance, area.id).toBeGreaterThan(1);
+        }
       }
     }
   });
@@ -444,7 +449,7 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
   });
 
   it("手畫樓層：把現有樓層轉成 JSON 再當成手畫版套回去，結果跟原本一樣", () => {
-    const ids = ["teaching3-1F", "sixth-1F", "research-1F", "research-3F"];
+    const ids = ["teaching3-1F", "guanghua-1F", "sixth-1F", "research-1F", "research-3F"];
     const overrides = new Map([
       ...loadFloorOverrides(),
       ...ids.map((id): [string, FloorOverride] => [id, areaToOverride(areas.get(id)!, areas)]),
@@ -461,8 +466,37 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
 
   it("手畫樓層的檔名對不到任何樓層時直接報錯", () => {
     const bogus = areaToOverride(areas.get("research-3F")!, areas);
-    expect(() => buildCampusWorld(new Map([["research-99F", { ...bogus, areaId: "research-99F" }]]))).toThrow(
-      /research-99F/
-    );
+    const overrides = new Map([...loadFloorOverrides(), ["research-99F", { ...bogus, areaId: "research-99F" }]]);
+    expect(() => buildCampusWorld(overrides)).toThrow(/research-99F/);
+  });
+
+  it("多個出入口：每扇戶外的門各自進到 1F 對應的位置，從 1F 對應的出口出來會站在那扇門外面", () => {
+    for (const buildingId of ["teaching3", "guanghua"]) {
+      const lobby = areas.get(`${buildingId}-1F`)!;
+      const { sideEntrances } = lobby.building!;
+      expect(sideEntrances.length, buildingId).toBeGreaterThan(0);
+      const doors = outdoor.warps.filter((warp) => warp.toAreaId === lobby.id);
+      const entrances = [anchorsOf(lobby).entranceArrival, ...sideEntrances];
+      expect(doors, buildingId).toHaveLength(entrances.length);
+      const exits = [lobby.warps[0], ...lobby.warps.slice(lobby.warps.length - sideEntrances.length)];
+      doors.forEach((door, index) => {
+        expect({ x: door.toX, y: door.toY }, `${buildingId} 第 ${index + 1} 扇門`).toEqual({
+          x: entrances[index].x,
+          y: entrances[index].y,
+        });
+        // 出來的位置就在同一扇門旁邊
+        const exit = exits[index];
+        expect(Math.abs(exit.toX - door.x) + Math.abs(exit.toY - door.y), `${buildingId} 第 ${index + 1} 扇門`).toBe(1);
+        expect(outdoor.map.isWalkable(exit.toX, exit.toY)).toBe(true);
+      });
+    }
+  });
+
+  it("有側門的建築 1F 沒有手畫版、或側門數量對不上時直接報錯", () => {
+    const withoutLobby = new Map([...loadFloorOverrides()].filter(([id]) => id !== "guanghua-1F"));
+    expect(() => buildCampusWorld(withoutLobby)).toThrow(/光華館 有側門/);
+    const lobby = structuredClone(loadFloorOverrides().get("guanghua-1F")!);
+    delete lobby.sideExits;
+    expect(() => buildCampusWorld(new Map([...loadFloorOverrides(), ["guanghua-1F", lobby]]))).toThrow(/側門/);
   });
 });
