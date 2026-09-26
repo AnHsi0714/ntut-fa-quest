@@ -392,6 +392,26 @@ PrintTranscript → PrintTranscript    同一份文件印兩次，沒有對應 t
 
 這份文件的設計重點是示範：先用 NFA 畫出三條平行分支（甲/乙/丙任一位簽名），轉成 DFA 後會產生三個分別對應「甲簽好了」「乙簽好了」「丙簽好了」的狀態；但因為這三個狀態之後能走的路完全一樣（都只剩送到系辦這一條路），可以透過 Minimization 合併成一個狀態。詳見第 13B 節。前面「兩份文件順序不限」的部分則跟文件 B 一樣，需要記住「還欠哪一份」，不能合併。
 
+### 流程分析整理（Phase 1）
+
+以下依目前 `questData.json` 已實作的文件 A、B、D 整理。文件 C 需要 PDA，等課程教到 Context-Free Languages 再補。
+
+| | 文件 A | 文件 B | 文件 D |
+| --- | --- | --- | --- |
+| 模型 | DFA | NFA（含 ε-transition） | NFA |
+| 步驟 | 承辦老師 → 系辦 → 教務處送件 | 承辦老師 → 系辦、系主任（順序不限）→ 教務處送件 | 印申請單、印成績單（順序不限）→ 任一位老師簽名 → 送系辦 |
+| 分支 | 無 | 承辦老師之後用 ε 分成「先系辦」「先系主任」兩條 | 列印順序兩條；簽名三選一（導師 / 系學會指導老師 / 系上老師） |
+| 重複流程 | 沒有合法 Loop；重複造訪一律是未定義 transition → REJECT | 同左 | 同左（例如成績單印兩次、簽第二個名） |
+| 撲空 | 承辦老師不在 → `staff_absent` → REJECT | 系主任是遊走型，不在時不送事件 | 三位老師不在 → `staff_absent` → REJECT |
+
+State：
+
+- 文件 A：`start`、`advisor`、`department`、`complete`
+- 文件 B：`start`、`advisor`、`hyp_dept_first`、`hyp_head_first`、`wait_head`、`wait_dept`、`ready`、`complete`
+- 文件 D：`start`、`has_form`、`has_transcript`、`ready`、`signed_by_advisor`、`signed_by_club_advisor`、`signed_by_teacher`、`complete`
+
+Event 見第 10.1 節。三份文件的 Accepting State 都只有 `complete`。
+
 ---
 
 ## 9. 流程例外、時間與體力系統
@@ -472,7 +492,7 @@ Verification Engine（只管：這個 Event 在目前 state 合不合法）
 - [x] 建立體力恢復規則（例如完成吃飯任務後恢復體力）
 - [x] 光華館學生餐廳可以主動吃飯補滿體力（花 30 分鐘），不進 Trace
 - [x] 換樓層的體力 / 時間成本：樓梯比較累、電梯要等（`verticalTravel.ts`）
-- [ ] 測試「玩家無法無限蹲點碰運氣」的遊戲節奏是否合理
+- [x] 測試「玩家無法無限蹲點碰運氣」的遊戲節奏是否合理（`pacing.test.ts`）：遊走型 NPC 只在時段切換時重擲，同時段一直去找只會扣體力，20 次撲空就體力歸零被臨時任務打斷；換時段重擲一天最多 4 次，每次至少扣 20 體力（撲空 5 + 跳轉 15），蹲滿一天要花 65 體力。50% 的 NPC 約 94% 一天內遇得到，平均擲 2 次，不會卡關也不會一試就中
 
 ---
 
@@ -483,13 +503,17 @@ Verification Engine（只管：這個 Event 在目前 state 合不合法）
 將玩家的遊戲行為抽象成有限個事件：
 
 ```
-VisitAdvisor
-VisitDepartmentOffice
-VisitDepartmentHead
-VisitAcademicAffairs
-StaffAbsent
-SubmitDocument
-CompleteQuest
+visit_advisor          拜訪承辦老師（文件 A、B）
+visit_department       前往系辦（文件 A、B）
+visit_departmentHead   前往系主任室（文件 B）
+submit_document        到教務處送出文件（文件 A、B）
+print_form             到影印中心印申請單（文件 D）
+print_transcript       到成績單列印機印成績單（文件 D）
+sign_by_advisor        找導師簽名（文件 D）
+sign_by_club_advisor   找系學會指導老師簽名（文件 D）
+sign_by_teacher        找系上老師簽名（文件 D）
+submit_to_office       送到系辦（文件 D）
+staff_absent           老師不在，撲空了（沒有任何 transition，一律 REJECT）
 ```
 
 形成：
@@ -497,15 +521,21 @@ CompleteQuest
 $$
 \Sigma =
 \{
-VisitAdvisor,
-VisitDepartmentOffice,
-VisitDepartmentHead,
-VisitAcademicAffairs,
-StaffAbsent,
-SubmitDocument,
-CompleteQuest
+visit\_advisor,
+visit\_department,
+visit\_departmentHead,
+submit\_document,
+print\_form,
+print\_transcript,
+sign\_by\_advisor,
+sign\_by\_club\_advisor,
+sign\_by\_teacher,
+submit\_to\_office,
+staff\_absent
 \}
 $$
+
+早期草稿的 `VisitAcademicAffairs`、`CompleteQuest` 兩個事件已經拿掉：到教務處這一步本身就是送件（`submit_document`），送件成功就進入 Accepting State，不需要另外一個「完成任務」事件。
 
 > 時間 / 機率不進入 Σ，而是作為 Game Layer 決定「觸發哪個 Event」的條件（詳見第 9.2 節），Alphabet 本身維持精簡，避免狀態機爆炸。
 
@@ -516,23 +546,19 @@ $$
 以文件 A 為例：
 
 ```
-(Start)
+(start)
     │
-    │ VisitAdvisor
+    │ visit_advisor
     ▼
-(Advisor)
+(advisor)
     │
-    │ VisitDepartmentOffice
+    │ visit_department
     ▼
-(DepartmentOffice)
+(department)
     │
-    │ VisitAcademicAffairs
+    │ submit_document
     ▼
-(AcademicAffairs)
-    │
-    │ CompleteQuest
-    ▼
-(Complete)
+((complete))
 ```
 
 開發項目：
@@ -894,13 +920,13 @@ src/
 
 - [x] 確定專題題目
 - [x] 確定遊戲核心玩法
-- [ ] 選擇 3～5 個行政文件流程（目前有文件 A、B 兩個，還差 1～3 個）
+- [x] 選擇 3～5 個行政文件流程（已實作文件 A、B、D；文件 C 需要 PDA，等課程教到再做）
 - [ ] 蒐集官方流程資料，並記錄資料來源與查詢日期
-- [ ] 整理每個流程的步驟
-- [ ] 找出可能的分支
-- [ ] 找出可能的重複流程
-- [ ] 定義流程中的 State
-- [ ] 定義流程中的 Event
+- [x] 整理每個流程的步驟（第 8 節「流程分析整理」）
+- [x] 找出可能的分支
+- [x] 找出可能的重複流程（三份文件都沒有合法 Loop，重複一律 REJECT）
+- [x] 定義流程中的 State
+- [x] 定義流程中的 Event（第 10.1 節 Alphabet 已更新成實作用的事件名稱）
 - [x] 分類每個 NPC 為「固定時段型」或「遊走 / 隨機型」
 
 ### Phase 2：Automata
