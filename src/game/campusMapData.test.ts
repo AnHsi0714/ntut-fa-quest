@@ -6,6 +6,7 @@ import { TileType } from "./tileTypes";
 import type { GameMap } from "./map";
 import { findPath } from "./pathfinding";
 import { isNpcWalkableTile } from "./npcWalkable";
+import { areaToOverride } from "./floorOverride";
 
 /** 從起點出發，走得到的所有格子（上下左右、只走可走的圖塊）。 */
 function reachableFrom(map: GameMap, startX: number, startY: number): Set<string> {
@@ -429,5 +430,36 @@ describe("buildCampusWorld（計畫書第 6 節校園地圖）", () => {
     for (const id of ["advisor", "department", "departmentHead", "academicAffairs"]) {
       expect(npcSpawns.find((spawn) => spawn.id === id)?.destinations, id).toBeUndefined();
     }
+  });
+
+  it("同一棟每一層的樓梯數量一樣（換樓層是用第幾座樓梯對到另一層，手畫的樓層也要遵守）", () => {
+    const counts = new Map<string, Set<number>>();
+    for (const area of areas.values()) {
+      if (!area.building) continue;
+      const set = counts.get(area.building.buildingId) ?? new Set<number>();
+      set.add(area.building.anchors.stairs.length);
+      counts.set(area.building.buildingId, set);
+    }
+    for (const [buildingId, set] of counts) expect([...set], buildingId).toHaveLength(1);
+  });
+
+  it("手畫樓層：把現有樓層轉成 JSON 再當成手畫版套回去，結果跟原本一樣", () => {
+    const ids = ["teaching3-1F", "sixth-1F", "research-1F", "research-3F"];
+    const overrides = new Map(ids.map((id) => [id, areaToOverride(areas.get(id)!, areas)]));
+    const rebuilt = buildCampusWorld(overrides);
+    for (const id of ids) {
+      const before = areas.get(id)!;
+      const after = rebuilt.areas.get(id)!;
+      expect(areaToOverride(after, rebuilt.areas), id).toEqual(overrides.get(id));
+      expect(after.warps, id).toEqual(before.warps);
+    }
+    expect(rebuilt.npcSpawns).toEqual(npcSpawns);
+  });
+
+  it("手畫樓層的檔名對不到任何樓層時直接報錯", () => {
+    const bogus = areaToOverride(areas.get("research-3F")!, areas);
+    expect(() => buildCampusWorld(new Map([["research-99F", { ...bogus, areaId: "research-99F" }]]))).toThrow(
+      /research-99F/
+    );
   });
 });
